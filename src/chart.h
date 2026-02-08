@@ -3,20 +3,56 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <vector>
 
 // ─── Layout constants ───
-constexpr int GRAPH_WIDTH   = 1200;
-constexpr int GRAPH_HEIGHT  = 700;
-constexpr int MARGIN_LEFT   = 90;
-constexpr int MARGIN_RIGHT  = 70;
-constexpr int MARGIN_TOP    = 50;
-constexpr int MARGIN_BOTTOM = 80;
+constexpr int DEFAULT_GRAPH_WIDTH   = 1200;
+constexpr int DEFAULT_GRAPH_HEIGHT  = 700;
+constexpr int MIN_GRAPH_WIDTH       = 800;
+constexpr int MIN_GRAPH_HEIGHT      = 500;
+
+// Margin ratios (percentage of window size)
+constexpr double MARGIN_LEFT_RATIO    = 0.075;    // 90/1200
+constexpr double MARGIN_RIGHT_RATIO   = 0.06;     // 70/1200
+constexpr double MARGIN_TOP_RATIO     = 0.07;     // 50/700
+constexpr double MARGIN_BOTTOM_RATIO  = 0.11;     // 80/700
+
+// Minimum margin values
+constexpr int MIN_MARGIN_LEFT   = 90;
+constexpr int MIN_MARGIN_RIGHT  = 70;
+constexpr int MIN_MARGIN_TOP    = 50;
+constexpr int MIN_MARGIN_BOTTOM = 80;
 
 // ─── Colour type ───
 struct RGBA { Uint8 r, g, b, a; };
+
+// ─── Window dimensions structure ───
+struct WindowDimensions {
+    int width;
+    int height;
+    int marginLeft;
+    int marginRight;
+    int marginTop;
+    int marginBottom;
+
+    static WindowDimensions calculate(int w, int h) {
+        WindowDimensions wd;
+        wd.width = w;
+        wd.height = h;
+        wd.marginLeft = std::max(MIN_MARGIN_LEFT,
+                                static_cast<int>(w * MARGIN_LEFT_RATIO));
+        wd.marginRight = std::max(MIN_MARGIN_RIGHT,
+                                 static_cast<int>(w * MARGIN_RIGHT_RATIO));
+        wd.marginTop = std::max(MIN_MARGIN_TOP,
+                               static_cast<int>(h * MARGIN_TOP_RATIO));
+        wd.marginBottom = std::max(MIN_MARGIN_BOTTOM,
+                                  static_cast<int>(h * MARGIN_BOTTOM_RATIO));
+        return wd;
+    }
+};
 
 // ─── Data ───
 struct PricePoint {

@@ -280,15 +280,15 @@ void drawDashedHLine(SDL_Renderer* ren, int x1, int x2, int y,
 static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
                         const std::vector<PricePoint>& price_history,
                         const std::string& ticker, ViewMode viewMode,
-                        int displayDays) {
+                        int displayDays, const WindowDimensions& winDim) {
     // Clear
     SDL_SetRenderDrawColor(ren, COL_BG.r, COL_BG.g, COL_BG.b, 255);
     SDL_RenderClear(ren);
 
-    const int cL = MARGIN_LEFT;
-    const int cR = GRAPH_WIDTH  - MARGIN_RIGHT;
-    const int cT = MARGIN_TOP;
-    const int cB = GRAPH_HEIGHT - MARGIN_BOTTOM;
+    const int cL = winDim.marginLeft;
+    const int cR = winDim.width - winDim.marginRight;
+    const int cT = winDim.marginTop;
+    const int cB = winDim.height - winDim.marginBottom;
     const int cW = cR - cL;
     const int cH = cB - cT;
 
@@ -326,11 +326,11 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     if (!viewModeName.empty()) {
         title += " (" + viewModeName + ")";
     }
-    drawText(ren, font, title, GRAPH_WIDTH / 2, 14, COL_TITLE, 1, 0);
+    drawText(ren, font, title, winDim.width / 2, 14, COL_TITLE, 1, 0);
 
     if (price_history.empty()) {
         drawText(ren, font, "No data available",
-                 GRAPH_WIDTH / 2, GRAPH_HEIGHT / 2, COL_TEXT, 1, 1);
+                 winDim.width / 2, winDim.height / 2, COL_TEXT, 1, 1);
         return;
     }
 
@@ -437,7 +437,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
 
     // ── Instructions ──
     drawText(ren, fontSm, "TAB: switch view | R: reload | Q/ESC: quit",
-             GRAPH_WIDTH / 2, GRAPH_HEIGHT - 16, COL_GRID, 1, 1);
+             winDim.width / 2, winDim.height - 16, COL_GRID, 1, 1);
 
     // ── Mouse hover label ──
     if (g_mouseX >= cL && g_mouseX <= cR && g_mouseY >= cT && g_mouseY <= cB) {
@@ -487,8 +487,8 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
                 int bg_y = hover_y - 30 - label_padding; // Start above the first line of text
 
                 // Ensure label stays within screen bounds (right edge)
-                if (bg_x + label_width > GRAPH_WIDTH) {
-                    bg_x = GRAPH_WIDTH - label_width - 5; // 5 pixels margin from right edge
+                if (bg_x + label_width > winDim.width) {
+                    bg_x = winDim.width - label_width - 5; // 5 pixels margin from right edge
                 }
                 // Ensure label stays within screen bounds (top edge)
                 if (bg_y < cT) {
@@ -583,12 +583,18 @@ int main(int argc, char* argv[]) {
     SDL_Window* win = SDL_CreateWindow(
         ("StockChart - " + ticker).c_str(),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        GRAPH_WIDTH, GRAPH_HEIGHT, SDL_WINDOW_SHOWN);
+        DEFAULT_GRAPH_WIDTH, DEFAULT_GRAPH_HEIGHT,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!win) {
         std::cerr << "SDL_CreateWindow: " << SDL_GetError() << "\n";
         TTF_CloseFont(font); TTF_CloseFont(fontSm);
         TTF_Quit(); SDL_Quit(); return 1;
     }
+
+    SDL_SetWindowMinimumSize(win, MIN_GRAPH_WIDTH, MIN_GRAPH_HEIGHT);
+
+    WindowDimensions winDim = WindowDimensions::calculate(
+        DEFAULT_GRAPH_WIDTH, DEFAULT_GRAPH_HEIGHT);
 
     SDL_Renderer* ren = SDL_CreateRenderer(win, -1,
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -603,7 +609,7 @@ int main(int argc, char* argv[]) {
 
     // ── Initial render ──
     ViewMode viewMode = ViewMode::PriceChart;
-    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days);
+    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
     SDL_RenderPresent(ren);
 
     // ── Event loop ──
@@ -622,7 +628,7 @@ int main(int argc, char* argv[]) {
             else if (ev.key.keysym.sym == SDLK_TAB) {
                 viewMode = static_cast<ViewMode>(
                     (static_cast<int>(viewMode) + 1) % VIEW_MODE_COUNT);
-                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days);
+                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
                 SDL_RenderPresent(ren);
             }
             else if (ev.key.keysym.sym == SDLK_r) {
@@ -638,19 +644,26 @@ int main(int argc, char* argv[]) {
                                   << price_history.back().date << ")\n";
                     }
                 }
-                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days);
+                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
                 SDL_RenderPresent(ren);
             }
             break;
         case SDL_MOUSEMOTION:
             g_mouseX = ev.motion.x;
             g_mouseY = ev.motion.y;
-            renderChart(ren, font, fontSm, price_history, ticker, viewMode, days);
+            renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
             SDL_RenderPresent(ren);
             break;
         case SDL_WINDOWEVENT:
             if (ev.window.event == SDL_WINDOWEVENT_EXPOSED) {
-                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days);
+                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                SDL_RenderPresent(ren);
+            }
+            else if (ev.window.event == SDL_WINDOWEVENT_RESIZED) {
+                int newWidth = ev.window.data1;
+                int newHeight = ev.window.data2;
+                winDim = WindowDimensions::calculate(newWidth, newHeight);
+                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
                 SDL_RenderPresent(ren);
             }
             break;
