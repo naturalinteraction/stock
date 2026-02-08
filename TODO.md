@@ -1,0 +1,1 @@
+- add claude.md with /init
