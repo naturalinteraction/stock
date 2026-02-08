@@ -41,6 +41,13 @@ static constexpr RGBA COL_FILL  = {  0, 200, 100,  30};
 static constexpr RGBA COL_TEXT  = {180, 180, 200, 255};
 static constexpr RGBA COL_TITLE = {240, 240, 255, 255};
 static constexpr RGBA COL_DOT   = {  0, 255, 140, 255};
+static constexpr RGBA COL_HOVER_LABEL = {255, 255, 255, 255}; // White for hover label
+static constexpr RGBA COL_LABEL_BG    = {0, 0, 0, 30}; // Semi-transparent dark background (alpha 90 out of 255)
+
+// --- Mouse hover state ---
+static int g_mouseX = 0;
+static int g_mouseY = 0;
+static bool g_mouseInChartArea = false;
 
 // ═══════════════════════  Network  ═══════════════════════
 
@@ -289,6 +296,9 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     int dispN = std::min(total, displayDays);
     int off   = total - dispN;          // lookback data lives at 0..off-1
 
+    // Reset mouse in chart area flag for this render cycle
+    g_mouseInChartArea = false;
+
     // Title
     std::string viewModeName;
     switch (viewMode) {
@@ -425,6 +435,86 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     // ── Instructions ──
     drawText(ren, fontSm, "TAB: switch view | R: reload | Q/ESC: quit",
              GRAPH_WIDTH / 2, GRAPH_HEIGHT - 16, COL_GRID, 1, 1);
+
+    // ── Mouse hover label ──
+    if (g_mouseX >= cL && g_mouseX <= cR && g_mouseY >= cT && g_mouseY <= cB) {
+        g_mouseInChartArea = true;
+        // Find the closest price point on the X axis to the mouse cursor
+        int closest_di = -1;
+        int min_dist = std::numeric_limits<int>::max();
+
+        // Iterate only through displayed points
+        for (int di = 0; di < dispN; ++di) {
+            int x_coord = toX(di);
+            int dist = std::abs(x_coord - g_mouseX);
+            if (dist < min_dist) {
+                min_dist = dist;
+                closest_di = di;
+            }
+        }
+
+        if (closest_di != -1) {
+            int hovered_real_idx = off + closest_di;
+            if (hovered_real_idx >= 0 && hovered_real_idx < total) {
+                const PricePoint& hovered_pp = price_history[hovered_real_idx];
+                int hover_x = toX(closest_di);
+                int hover_y = toY(hovered_pp.price);
+
+                // Price label
+                std::ostringstream price_oss;
+                price_oss << std::fixed << std::setprecision(2) << hovered_pp.price;
+                std::string price_str = price_oss.str();
+
+                // Date label (formatted as at the bottom of the graph)
+                std::string formatted_date = shortDate(hovered_pp.date);
+
+                // Get text dimensions
+                int price_w, price_h;
+                TTF_SizeText(fontSm, price_str.c_str(), &price_w, &price_h);
+                int date_w, date_h;
+                TTF_SizeText(fontSm, formatted_date.c_str(), &date_w, &date_h);
+
+                int label_padding = 5;
+                int label_width = std::max(price_w, date_w) + label_padding * 2;
+                int label_height = price_h + date_h + label_padding * 3; // 2 lines + 3 paddings (top, middle, bottom)
+
+                // Calculate position for the background rectangle
+                // Offset it slightly from the hover_x, hover_y
+                int bg_x = hover_x + 10;
+                int bg_y = hover_y - 30 - label_padding; // Start above the first line of text
+
+                // Ensure label stays within screen bounds (right edge)
+                if (bg_x + label_width > GRAPH_WIDTH) {
+                    bg_x = GRAPH_WIDTH - label_width - 5; // 5 pixels margin from right edge
+                }
+                // Ensure label stays within screen bounds (top edge)
+                if (bg_y < cT) {
+                    bg_y = cT + 5; // 5 pixels margin from top edge
+                }
+
+                SDL_Rect bg_rect = {bg_x, bg_y, label_width, label_height};
+
+                // Draw semi-transparent background
+                SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+                SDL_SetRenderDrawColor(ren, COL_LABEL_BG.r, COL_LABEL_BG.g,
+                                       COL_LABEL_BG.b, COL_LABEL_BG.a);
+                SDL_RenderFillRect(ren, &bg_rect);
+
+                // Draw price text
+                drawText(ren, fontSm, price_str, bg_x + label_padding, bg_y + label_padding, COL_HOVER_LABEL, 0, 0);
+
+                // Draw date text
+                drawText(ren, fontSm, formatted_date, bg_x + label_padding, bg_y + label_padding + price_h + label_padding, COL_HOVER_LABEL, 0, 0);
+                
+                // Draw a small dot or circle on the hovered point for better visibility
+                SDL_SetRenderDrawColor(ren, COL_HOVER_LABEL.r, COL_HOVER_LABEL.g, COL_HOVER_LABEL.b, COL_HOVER_LABEL.a);
+                SDL_Rect dot = {hover_x - 3, hover_y - 3, 7, 7};
+                SDL_RenderDrawRect(ren, &dot);
+            }
+        }
+    } else {
+        g_mouseInChartArea = false;
+    }
 }
 
 // ═══════════════════════  main  ═══════════════════════
@@ -548,6 +638,12 @@ int main(int argc, char* argv[]) {
                 renderChart(ren, font, fontSm, price_history, ticker, viewMode, days);
                 SDL_RenderPresent(ren);
             }
+            break;
+        case SDL_MOUSEMOTION:
+            g_mouseX = ev.motion.x;
+            g_mouseY = ev.motion.y;
+            renderChart(ren, font, fontSm, price_history, ticker, viewMode, days);
+            SDL_RenderPresent(ren);
             break;
         case SDL_WINDOWEVENT:
             if (ev.window.event == SDL_WINDOWEVENT_EXPOSED) {
