@@ -317,6 +317,9 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
         case ViewMode::PriceAction:
             viewModeName = "PriceAction";
             break;
+        default: // Handle _COUNT and any other unhandled ViewMode values
+            viewModeName = "Unknown";
+            break;
     }
 
     std::string title = ticker + " - " + std::to_string(dispN) + " Trading Days";
