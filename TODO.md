@@ -1,1 +1,1 @@
-- add claude.md with /init
+- [x] add claude.md with /init
