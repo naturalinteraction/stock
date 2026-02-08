@@ -31,6 +31,7 @@
 // ─── Defaults ───
 static const std::string DEFAULT_TICKER = "VWCE.DE";
 constexpr int DEFAULT_DAYS = 30;
+static bool FULLSCREEN = true;
 
 // ─── Colour palette ───
 static constexpr RGBA COL_BG    = { 18,  18,  40, 255};
@@ -580,21 +581,32 @@ int main(int argc, char* argv[]) {
         TTF_Quit(); SDL_Quit(); return 1;
     }
 
+    Uint32 windowFlags = SDL_WINDOW_SHOWN;
+    if (FULLSCREEN) {
+        windowFlags |= SDL_WINDOW_FULLSCREEN;
+    } else {
+        windowFlags |= SDL_WINDOW_RESIZABLE;
+    }
+
     SDL_Window* win = SDL_CreateWindow(
         ("StockChart - " + ticker).c_str(),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         DEFAULT_GRAPH_WIDTH, DEFAULT_GRAPH_HEIGHT,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        windowFlags);
     if (!win) {
         std::cerr << "SDL_CreateWindow: " << SDL_GetError() << "\n";
         TTF_CloseFont(font); TTF_CloseFont(fontSm);
         TTF_Quit(); SDL_Quit(); return 1;
     }
 
-    SDL_SetWindowMinimumSize(win, MIN_GRAPH_WIDTH, MIN_GRAPH_HEIGHT);
+    if (!FULLSCREEN) {
+        SDL_SetWindowMinimumSize(win, MIN_GRAPH_WIDTH, MIN_GRAPH_HEIGHT);
+    }
 
-    WindowDimensions winDim = WindowDimensions::calculate(
-        DEFAULT_GRAPH_WIDTH, DEFAULT_GRAPH_HEIGHT);
+    // Get actual window size (may differ from initial size in fullscreen)
+    int winWidth, winHeight;
+    SDL_GetWindowSize(win, &winWidth, &winHeight);
+    WindowDimensions winDim = WindowDimensions::calculate(winWidth, winHeight);
 
     SDL_Renderer* ren = SDL_CreateRenderer(win, -1,
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
