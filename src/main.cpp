@@ -290,9 +290,29 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     int off   = total - dispN;          // lookback data lives at 0..off-1
 
     // Title
-    std::string title = ticker + " - "
-                      + std::to_string(dispN)
-                      + " Trading Days";
+    std::string viewModeName;
+    switch (viewMode) {
+        case ViewMode::PriceChart:
+            viewModeName = ""; // As requested, empty for base chart
+            break;
+        case ViewMode::PriceChartStats:
+            viewModeName = "Stats";
+            break;
+        case ViewMode::Bollinger:
+            viewModeName = "Bollinger";
+            break;
+        case ViewMode::MACross:
+            viewModeName = "MACross";
+            break;
+        case ViewMode::PriceAction:
+            viewModeName = "PriceAction";
+            break;
+    }
+
+    std::string title = ticker + " - " + std::to_string(dispN) + " Trading Days";
+    if (!viewModeName.empty()) {
+        title += " (" + viewModeName + ")";
+    }
     drawText(ren, font, title, GRAPH_WIDTH / 2, 14, COL_TITLE, 1, 0);
 
     if (price_history.empty()) {
