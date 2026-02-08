@@ -1,6 +1,6 @@
-# StockChart - ETF Price Chart Viewer
+# Stock - Price Chart Viewer
 
-StockChart is a command-line interface (CLI) application for visualizing ETF price charts, offering various analysis view modes.
+For visualizing price charts, offering various analysis view modes.
 
 ## Usage
 
@@ -11,7 +11,7 @@ To run the application, use the following command:
 ```
 
 -   `TICKER`: Yahoo Finance ticker symbol (e.g., `VWCE.DE`, `^GSPC`). Defaults to `VWCE.DE`.
--   `DAYS`: Number of trading days to display (e.g., `30`). Defaults to `30`.
+-   `DAYS`: Number of trading days to display (e.g., `50`). Defaults to `30`.
 
 **Example:**
 ```bash
