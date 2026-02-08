@@ -274,7 +274,7 @@ static void thickLine(SDL_Renderer* r, int x1, int y1, int x2, int y2) {
 // ═══════════════════════  Chart renderer  ═══════════════════════
 
 static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
-                        const std::vector<PricePoint>& data,
+                        const std::vector<PricePoint>& price_history,
                         const std::string& ticker) {
     // Clear
     SDL_SetRenderDrawColor(ren, COL_BG.r, COL_BG.g, COL_BG.b, 255);
@@ -289,19 +289,19 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
 
     // Title
     std::string title = ticker + " - "
-                      + std::to_string(static_cast<int>(data.size()))
+                      + std::to_string(static_cast<int>(price_history.size()))
                       + " Trading Days";
     drawText(ren, font, title, GRAPH_WIDTH / 2, 14, COL_TITLE, 1, 0);
 
-    if (data.empty()) {
+    if (price_history.empty()) {
         drawText(ren, font, "No data available",
                  GRAPH_WIDTH / 2, GRAPH_HEIGHT / 2, COL_TEXT, 1, 1);
         return;
     }
 
     // Price range
-    double lo = data[0].price, hi = lo;
-    for (auto& p : data) {
+    double lo = price_history[0].price, hi = lo;
+    for (auto& p : price_history) {
         lo = std::min(lo, p.price);
         hi = std::max(hi, p.price);
     }
@@ -316,7 +316,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     double gMax = std::ceil(hi  / step) * step;
     range = gMax - gMin;
 
-    int N = static_cast<int>(data.size());
+    int N = static_cast<int>(price_history.size());
 
     auto toY = [&](double price) -> int {
         return cB - static_cast<int>((price - gMin) / range * cH);
@@ -344,7 +344,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
         int x = toX(i);
         SDL_SetRenderDrawColor(ren, COL_GRID.r, COL_GRID.g, COL_GRID.b, COL_GRID.a);
         SDL_RenderDrawLine(ren, x, cT, x, cB);
-        drawText(ren, fontSm, shortDate(data[i].date), x, cB + 8, COL_TEXT, 1, 0);
+        drawText(ren, fontSm, shortDate(price_history[i].date), x, cB + 8, COL_TEXT, 1, 0);
     }
 
     // ── Axes ──
@@ -356,27 +356,27 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(ren, COL_FILL.r, COL_FILL.g, COL_FILL.b, COL_FILL.a);
     for (int i = 0; i < N; ++i) {
-        int x = toX(i), y = toY(data[i].price);
+        int x = toX(i), y = toY(price_history[i].price);
         SDL_RenderDrawLine(ren, x, y, x, cB);
     }
 
     // ── Price line ──
     SDL_SetRenderDrawColor(ren, COL_LINE.r, COL_LINE.g, COL_LINE.b, COL_LINE.a);
     for (int i = 1; i < N; ++i)
-        thickLine(ren, toX(i - 1), toY(data[i - 1].price),
-                       toX(i),     toY(data[i].price));
+        thickLine(ren, toX(i - 1), toY(price_history[i - 1].price),
+                       toX(i),     toY(price_history[i].price));
 
     // ── Data dots ──
     SDL_SetRenderDrawColor(ren, COL_DOT.r, COL_DOT.g, COL_DOT.b, COL_DOT.a);
     for (int i = 0; i < N; ++i) {
-        int x = toX(i), y = toY(data[i].price);
+        int x = toX(i), y = toY(price_history[i].price);
         SDL_Rect dot = {x - 2, y - 2, 5, 5};
         SDL_RenderFillRect(ren, &dot);
     }
 
     // ── Last-price annotation ──
     {
-        const auto& last = data.back();
+        const auto& last = price_history.back();
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(2) << last.price;
         int x = toX(N - 1), y = toY(last.price);
@@ -418,14 +418,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    auto data = parseResponse(json, days);
-    if (data.empty()) {
+    auto price_history = parseResponse(json, days);
+    if (price_history.empty()) {
         std::cerr << "No trading data found for " << ticker << "\n";
         return 1;
     }
 
-    std::cout << "Loaded " << data.size() << " trading days  ("
-              << data.front().date << "  ->  " << data.back().date << ")\n";
+    std::cout << "Loaded " << price_history.size() << " trading days  ("
+              << price_history.front().date << "  ->  " << price_history.back().date << ")\n";
 
     // ── SDL init ──
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -471,7 +471,7 @@ int main(int argc, char* argv[]) {
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 
     // ── Initial render ──
-    renderChart(ren, font, fontSm, data, ticker);
+    renderChart(ren, font, fontSm, price_history, ticker);
     SDL_RenderPresent(ren);
 
     // ── Event loop ──
@@ -490,7 +490,7 @@ int main(int argc, char* argv[]) {
             break;
         case SDL_WINDOWEVENT:
             if (ev.window.event == SDL_WINDOWEVENT_EXPOSED) {
-                renderChart(ren, font, fontSm, data, ticker);
+                renderChart(ren, font, fontSm, price_history, ticker);
                 SDL_RenderPresent(ren);
             }
             break;
