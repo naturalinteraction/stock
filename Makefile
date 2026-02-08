@@ -3,7 +3,7 @@ CXXFLAGS = -std=c++17 -O2 -Wall -Wextra $(shell sdl2-config --cflags)
 LDFLAGS  = $(shell sdl2-config --libs) -lSDL2_ttf -lcurl
 
 TARGET   = bin/stock
-SRC      = src/main.cpp src/viewmode_stats.cpp src/viewmode_bollinger.cpp src/viewmode_macross.cpp
+SRC      = src/main.cpp src/viewmode_stats.cpp src/viewmode_bollinger.cpp src/viewmode_macross.cpp src/viewmode_price_action.cpp
 OBJ      = $(patsubst src/%.cpp,bin/%.o,$(SRC))
 
 all: $(TARGET)

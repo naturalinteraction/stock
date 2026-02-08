@@ -25,8 +25,8 @@ struct PricePoint {
 };
 
 // ─── View modes ───
-enum class ViewMode { PriceChart, PriceChartStats, Bollinger, MACross };
-constexpr int VIEW_MODE_COUNT = 4;
+enum class ViewMode { PriceChart, PriceChartStats, Bollinger, MACross, PriceAction };
+constexpr int VIEW_MODE_COUNT = 5;
 constexpr int LOOKBACK_DAYS   = 21;
 
 // ─── Chart region (precomputed from margins) ───
