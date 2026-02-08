@@ -11,6 +11,7 @@
 
 #include "chart.h"
 #include "viewmode_bollinger.h"
+#include "viewmode_macross.h"
 #include "viewmode_stats.h"
 
 #include <curl/curl.h>
@@ -381,6 +382,8 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
             renderStatsOverlay(ren, fontSm, price_history, cr);
         else if (viewMode == ViewMode::Bollinger)
             renderBollingerOverlay(ren, fontSm, price_history, cr);
+        else if (viewMode == ViewMode::MACross)
+            renderMACrossOverlay(ren, fontSm, price_history, cr);
     }
 
     // ── Last-price annotation ──
