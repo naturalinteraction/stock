@@ -581,7 +581,7 @@ int main(int argc, char* argv[]) {
         TTF_Quit(); SDL_Quit(); return 1;
     }
 
-    Uint32 windowFlags = SDL_WINDOW_SHOWN;
+    Uint32 windowFlags = 0;
     if (FULLSCREEN) {
         windowFlags |= SDL_WINDOW_FULLSCREEN;
     } else {
@@ -618,6 +618,9 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+
+    // Show window after all setup is complete to avoid flashing
+    SDL_ShowWindow(win);
 
     // ── Initial render ──
     ViewMode viewMode = ViewMode::PriceChart;
