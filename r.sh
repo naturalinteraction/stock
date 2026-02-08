@@ -1,2 +1,2 @@
 #!/bin/bash
-cd "$(dirname "$0")" && make && ./bin/stockchart "$@"
+cd "$(dirname "$0")" && make && ./bin/stock "$@"
