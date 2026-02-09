@@ -593,10 +593,17 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
 
 int main(int argc, char* argv[]) {
     Config appConfig = loadConfig();
+    g_currentTickerIndex = appConfig.lastActiveTickerIndex;
+    // Ensure g_currentTickerIndex is within valid bounds
+    if (static_cast<size_t>(g_currentTickerIndex) >= appConfig.tickers.size()) {
+        g_currentTickerIndex = 0;
+    }
 
     // Command line arguments override config
     if (argc >= 2) {
         appConfig.tickers[g_currentTickerIndex] = argv[1];
+        appConfig.lastActiveTickerIndex = 0; // Command line always sets the first ticker as active
+        saveConfig(appConfig);
     }
     if (argc >= 3) {
         appConfig.displayedDays = std::stoi(argv[2]);
@@ -727,6 +734,8 @@ int main(int argc, char* argv[]) {
                 }
                 else if (ev.key.keysym.sym == SDLK_SPACE) {
                     g_currentTickerIndex = (g_currentTickerIndex + 1) % appConfig.tickers.size();
+                    appConfig.lastActiveTickerIndex = g_currentTickerIndex;
+                    saveConfig(appConfig);
                     std::cout << "Switching to ticker: " << appConfig.tickers[g_currentTickerIndex] << " ...\n";
 
                     int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;

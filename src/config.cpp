@@ -156,6 +156,26 @@ Config loadConfig(const std::string& filename) {
         }
     }
 
+    // Parse "last_active_ticker_index"
+    const std::string last_active_ticker_index_search_key = "\"last_active_ticker_index\":";
+    pos = content.find(last_active_ticker_index_search_key);
+    if (pos != std::string::npos) {
+        size_t value_start = pos + last_active_ticker_index_search_key.length();
+        // Skip whitespace
+        while (value_start < content.length() && (content[value_start] == ' ' || content[value_start] == '\t')) {
+            value_start++;
+        }
+        if (value_start < content.length()) {
+            size_t value_end = content.find_first_of(" \t\n\r,}", value_start);
+            std::string indexStr = content.substr(value_start, value_end - value_start);
+            try {
+                config.lastActiveTickerIndex = std::stoi(indexStr);
+            } catch (...) {
+                std::cerr << "Malformed last_active_ticker_index value '" << indexStr << "' in config file. Using default.\n";
+            }
+        }
+    }
+
     return config;
 }
 
@@ -181,7 +201,8 @@ void saveConfig(const Config& config, const std::string& filename) {
         ofs << "\n";
     }
     ofs << "    ],\n";
-    ofs << "    \"displayed_days\": " << config.displayedDays << "\n";
+    ofs << "    \"displayed_days\": " << config.displayedDays << ",\n";
+    ofs << "    \"last_active_ticker_index\": " << config.lastActiveTickerIndex << "\n";
     ofs << "}\n";
     ofs.close();
 }

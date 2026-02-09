@@ -12,9 +12,10 @@ struct Config {
     bool fullscreen;
     std::vector<std::string> tickers;
     int displayedDays;
+    int lastActiveTickerIndex;
 
     // Default constructor
-    Config() : viewMode(ViewMode::PriceChart), fullscreen(false), displayedDays(10) {}
+    Config() : viewMode(ViewMode::PriceChart), fullscreen(false), displayedDays(10), lastActiveTickerIndex(0) {}
 };
 
 Config loadConfig(const std::string& filename = CONFIG_FILE_PATH);
