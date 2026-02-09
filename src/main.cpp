@@ -30,7 +30,7 @@
 #include <vector>
 
 // ─── Defaults ───
-constexpr int DEFAULT_DAYS = 30;
+constexpr int DEFAULT_DAYS = 90;
 
 // ─── Colour palette ───
 static constexpr RGBA COL_BG    = { 18,  18,  40, 255};
@@ -527,13 +527,7 @@ int main(int argc, char* argv[]) {
     int days = DEFAULT_DAYS;
 
     if (argc >= 2) ticker = argv[1]; // Command line argument overrides config
-    if (argc >= 3) {
-        try { days = std::stoi(argv[2]); }
-        catch (...) {
-            std::cerr << "Invalid day count: " << argv[2] << "\n";
-            return 1;
-        }
-    }
+
 
     int fetchDays = days + LOOKBACK_DAYS;
     std::cout << "Fetching " << days << " trading days for " << ticker
