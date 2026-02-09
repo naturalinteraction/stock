@@ -22,7 +22,7 @@ static std::map<std::string, ViewMode> stringToViewMode = {
 
 
 Config loadConfig(const std::string& filename) {
-    Config config;
+    Config config; // This will hold default values if file not found or parsing fails
     std::ifstream ifs(filename);
     if (!ifs.is_open()) {
         std::cerr << "Config file " << filename << " not found. Creating default.\n";
@@ -30,14 +30,11 @@ Config loadConfig(const std::string& filename) {
         return config;
     }
 
-    std::string line;
-    std::string content;
-    while (std::getline(ifs, line)) {
-        content += line;
-    }
+    std::string content((std::istreambuf_iterator<char>(ifs)),
+                        (std::istreambuf_iterator<char>()));
     ifs.close();
 
-    // Basic JSON parsing for "view_mode" property
+    // Parse "view_mode"
     const std::string view_mode_search_key = "\"view_mode\":";
     size_t pos = content.find(view_mode_search_key);
     if (pos != std::string::npos) {
@@ -55,12 +52,11 @@ Config loadConfig(const std::string& filename) {
         }
     }
 
-    // Basic JSON parsing for "fullscreen" property
+    // Parse "fullscreen"
     const std::string fullscreen_search_key = "\"fullscreen\":";
     pos = content.find(fullscreen_search_key);
     if (pos != std::string::npos) {
         size_t value_start = pos + fullscreen_search_key.length();
-        // Skip whitespace
         while (value_start < content.length() && (content[value_start] == ' ' || content[value_start] == '\t')) {
             value_start++;
         }
@@ -74,6 +70,23 @@ Config loadConfig(const std::string& filename) {
             } else {
                 std::cerr << "Unknown fullscreen value '" << boolStr << "' in config file. Using default.\n";
             }
+        }
+    }
+
+    // Parse "ticker"
+    const std::string ticker_search_key = "\"ticker\":";
+    pos = content.find(ticker_search_key);
+    if (pos != std::string::npos) {
+        size_t value_start_quote = content.find("\"", pos + ticker_search_key.length());
+        if (value_start_quote != std::string::npos) {
+            size_t value_end_quote = content.find("\"", value_start_quote + 1);
+            if (value_end_quote != std::string::npos) {
+                config.ticker = content.substr(value_start_quote + 1, value_end_quote - (value_start_quote + 1));
+            } else {
+                std::cerr << "Malformed ticker value in config file. Using default.\n";
+            }
+        } else {
+            std::cerr << "Malformed ticker entry in config file. Using default.\n";
         }
     }
 
@@ -92,7 +105,8 @@ void saveConfig(const Config& config, const std::string& filename) {
 
     ofs << "{\n";
     ofs << "    \"view_mode\": \"" << viewModeToString[config.viewMode] << "\",\n";
-    ofs << "    \"fullscreen\": " << (config.fullscreen ? "true" : "false") << "\n";
+    ofs << "    \"fullscreen\": " << (config.fullscreen ? "true" : "false") << ",\n";
+    ofs << "    \"ticker\": \"" << config.ticker << "\"\n";
     ofs << "}\n";
     ofs.close();
 }

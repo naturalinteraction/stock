@@ -30,9 +30,7 @@
 #include <vector>
 
 // ─── Defaults ───
-static const std::string DEFAULT_TICKER = "VWCE.DE";
 constexpr int DEFAULT_DAYS = 30;
-static bool FULLSCREEN;
 
 // ─── Colour palette ───
 static constexpr RGBA COL_BG    = { 18,  18,  40, 255};
@@ -522,10 +520,13 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
 // ═══════════════════════  main  ═══════════════════════
 
 int main(int argc, char* argv[]) {
-    std::string ticker = DEFAULT_TICKER;
+    Config appConfig = loadConfig();
+    std::string ticker = appConfig.ticker; // Initialize from config
+    ViewMode viewMode = appConfig.viewMode; // Declare and initialize viewMode here
+    bool FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN as a local variable from config
     int days = DEFAULT_DAYS;
 
-    if (argc >= 2) ticker = argv[1];
+    if (argc >= 2) ticker = argv[1]; // Command line argument overrides config
     if (argc >= 3) {
         try { days = std::stoi(argv[2]); }
         catch (...) {
@@ -616,9 +617,6 @@ int main(int argc, char* argv[]) {
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 
     // ── Initial render ──
-    Config appConfig = loadConfig();
-    ViewMode viewMode = appConfig.viewMode;
-    FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN from config
 
     // Show window after all setup and initial render is complete
     SDL_ShowWindow(win);
