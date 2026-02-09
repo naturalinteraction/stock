@@ -31,7 +31,7 @@
 // ─── Defaults ───
 static const std::string DEFAULT_TICKER = "VWCE.DE";
 constexpr int DEFAULT_DAYS = 30;
-static bool FULLSCREEN = true;
+static bool FULLSCREEN = false;
 
 // ─── Colour palette ───
 static constexpr RGBA COL_BG    = { 18,  18,  40, 255};
