@@ -5,7 +5,7 @@
 #include <string>
 
 const std::string CONFIG_FILE_PATH = "data/config.json";
-static const std::string CONFIG_DEFAULT_TICKER = "VWCE.DE";
+
 
 struct Config {
     ViewMode viewMode;

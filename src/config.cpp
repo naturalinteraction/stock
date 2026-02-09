@@ -28,9 +28,12 @@ Config loadConfig(const std::string& filename) {
     std::ifstream ifs(filename);
     if (!ifs.is_open()) {
         std::cerr << "Config file " << filename << " not found. Creating default.\n";
-        for (int i = 0; i < 6; ++i) {
-            config.tickers.push_back(CONFIG_DEFAULT_TICKER);
-        }
+        config.tickers.push_back("VWCE.DE");
+        config.tickers.push_back("VHYL.AS");
+        config.tickers.push_back("VWCE.MI");
+        config.tickers.push_back("WS5X.MI");
+        config.tickers.push_back("USDEUR=X");
+        config.tickers.push_back("EURUSD=X");
         saveConfig(config, filename); // Save default config
         return config;
     }
@@ -105,15 +108,22 @@ Config loadConfig(const std::string& filename) {
             ticker_val.erase(ticker_val.find_last_not_of(" \t\"\n") + 1);
             config.tickers.push_back(ticker_val);
 
-            // Determine the filler ticker: first parsed ticker, or CONFIG_DEFAULT_TICKER if none parsed
-            std::string fillerTicker = CONFIG_DEFAULT_TICKER;
-            if (!config.tickers.empty()) {
-                fillerTicker = config.tickers[0];
+            // Determine the filler ticker: first parsed ticker, or use the hardcoded defaults
+            if (config.tickers.empty()) {
+                config.tickers.push_back("VWCE.DE");
+                config.tickers.push_back("VHYL.AS");
+                config.tickers.push_back("VWCE.MI");
+                config.tickers.push_back("WS5X.MI");
+                config.tickers.push_back("USDEUR=X");
+                config.tickers.push_back("EURUSD=X");
             }
 
-            // If less than 6 tickers are provided, fill with fillerTicker
-            while (config.tickers.size() < 6) {
-                config.tickers.push_back(fillerTicker);
+            // If less than 6 tickers are provided, fill with first parsed ticker (if available)
+            if (config.tickers.size() < 6) {
+                std::string firstTicker = config.tickers[0]; // Assumes config.tickers is not empty due to previous block
+                while (config.tickers.size() < 6) {
+                    config.tickers.push_back(firstTicker);
+                }
             }
             // If more than 6 tickers are provided, truncate
             if (config.tickers.size() > 6) {
