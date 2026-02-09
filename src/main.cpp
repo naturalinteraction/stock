@@ -439,6 +439,16 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
         SDL_RenderDrawLine(ren, x, cT, x, cB);
         drawText(ren, fontSm, shortDate(price_history[off + di].date), x, cB + 8, COL_TEXT, 1, 0);
     }
+    // Always draw rightmost vertical line if the loop didn't land on it
+    {
+        int lastDi = dispN - 1;
+        if (lastDi % labelStep != 0) {
+            int x = toX(lastDi);
+            SDL_SetRenderDrawColor(ren, COL_GRID.r, COL_GRID.g, COL_GRID.b, COL_GRID.a);
+            SDL_RenderDrawLine(ren, x, cT, x, cB);
+            drawText(ren, fontSm, shortDate(price_history[off + lastDi].date), x, cB + 8, COL_TEXT, 1, 0);
+        }
+    }
 
     // ── Axes ──
     SDL_SetRenderDrawColor(ren, COL_AXIS.r, COL_AXIS.g, COL_AXIS.b, COL_AXIS.a);
