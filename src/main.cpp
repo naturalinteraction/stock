@@ -374,7 +374,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     const int cH = cB - cT;
 
     // Clip drawing to chart area
-    SDL_Rect clipRect = {cL, cT, cW, cH};
+    SDL_Rect clipRect = {cL, cT, cW + 1, cH + 1}; // Expand clipping region by 1 pixel to include borders
     SDL_RenderSetClipRect(ren, &clipRect);
 
     int total = static_cast<int>(price_history.size());
