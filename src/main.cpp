@@ -54,6 +54,10 @@ static int g_mouseX = 0;
 static int g_mouseY = 0;
 static bool g_mouseInChartArea = false;
 
+// --- View mode tabs state ---
+static SDL_Rect g_viewModeTabs[4] = {}; // Rectangles for each tab
+static int g_viewModeTabCount = 0;      // Number of tabs
+
 // ═══════════════════════  Network  ═══════════════════════
 
 static size_t curlWrite(void* buf, size_t sz, size_t n, std::string* out) {
@@ -292,6 +296,19 @@ static std::string getViewModeName(ViewMode mode) {
     }
 }
 
+// Check if mouse click is within any view mode tab and return the mode
+static bool getClickedViewMode(int mouseX, int mouseY, ViewMode& outMode) {
+    for (int i = 0; i < g_viewModeTabCount; i++) {
+        const SDL_Rect& tab = g_viewModeTabs[i];
+        if (mouseX >= tab.x && mouseX < tab.x + tab.w &&
+            mouseY >= tab.y && mouseY < tab.y + tab.h) {
+            outMode = static_cast<ViewMode>(i);
+            return true;
+        }
+    }
+    return false;
+}
+
 static int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode currentMode,
                              int topY, int leftMargin) {
     const int rectHeight = 30;
@@ -299,6 +316,7 @@ static int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode current
     const int rectPadding = 12;
 
     int currentX = leftMargin;
+    g_viewModeTabCount = VIEW_MODE_COUNT;
 
     // Draw each rectangle
     for (int i = 0; i < VIEW_MODE_COUNT; i++) {
@@ -310,6 +328,9 @@ static int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode current
 
         int rectW = textW + 2 * rectPadding;
         SDL_Rect rect = {currentX, topY, rectW, rectHeight};
+
+        // Store tab rectangle for click detection
+        g_viewModeTabs[i] = rect;
 
         // Draw filled rectangle
         if (mode == currentMode) {
@@ -747,6 +768,18 @@ int main(int argc, char* argv[]) {
                 g_mouseX = ev.motion.x;
                 g_mouseY = ev.motion.y;
                 mouseMoved = true; // Set flag, don't render immediately
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+                if (ev.button.button == SDL_BUTTON_LEFT) {
+                    ViewMode clickedMode;
+                    if (getClickedViewMode(ev.button.x, ev.button.y, clickedMode)) {
+                        viewMode = clickedMode;
+                        appConfig.viewMode = viewMode;
+                        saveConfig(appConfig);
+                        renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
+                        SDL_RenderPresent(ren);
+                    }
+                }
                 break;
             case SDL_WINDOWEVENT:
                 if (ev.window.event == SDL_WINDOWEVENT_EXPOSED) {
