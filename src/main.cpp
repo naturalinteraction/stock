@@ -59,6 +59,10 @@ static SDL_Rect g_viewModeTabs[4] = {}; // Rectangles for each tab
 static int g_viewModeTabCount = 0;      // Number of tabs
 static int g_currentTickerIndex = 0; // Index of the currently displayed ticker
 
+// --- Ticker buttons state ---
+static SDL_Rect g_tickerButtons[6] = {}; // Rectangles for each ticker button
+static int g_tickerButtonCount = 0;      // Number of ticker buttons
+
 // ═══════════════════════  Network  ═══════════════════════
 
 static size_t curlWrite(void* buf, size_t sz, size_t n, std::string* out) {
@@ -311,6 +315,19 @@ static bool getClickedViewMode(int mouseX, int mouseY, ViewMode& outMode) {
     return false;
 }
 
+// Check if mouse click is within any ticker button and return the ticker index
+static bool getClickedTicker(int mouseX, int mouseY, int& outTickerIndex) {
+    for (int i = 0; i < g_tickerButtonCount; i++) {
+        const SDL_Rect& button = g_tickerButtons[i];
+        if (mouseX >= button.x && mouseX < button.x + button.w &&
+            mouseY >= button.y && mouseY < button.y + button.h) {
+            outTickerIndex = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 static int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode currentMode,
                              int topY, int leftMargin) {
     const int rectHeight = 30;
@@ -358,6 +375,49 @@ static int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode current
     return currentX - rectSpacing;
 }
 
+static void renderTickerBar(SDL_Renderer* ren, TTF_Font* font, const std::vector<std::string>& tickers,
+                            int currentTickerIndex, int topY, int rightMargin) {
+    const int rectHeight = 30;
+    const int rectSpacing = 10;
+    const int rectPadding = 12;
+
+    int currentX = rightMargin;
+    g_tickerButtonCount = std::min(6, static_cast<int>(tickers.size()));
+
+    // Draw each ticker button from right to left
+    for (int i = g_tickerButtonCount - 1; i >= 0; i--) {
+        const std::string& ticker = tickers[i];
+
+        int textW, textH;
+        TTF_SizeText(font, ticker.c_str(), &textW, &textH);
+
+        int rectW = textW + 2 * rectPadding;
+        SDL_Rect rect = {currentX - rectW, topY, rectW, rectHeight};
+
+        // Store button rectangle for click detection
+        g_tickerButtons[i] = rect;
+
+        // Draw filled rectangle
+        if (i == currentTickerIndex) {
+            // Active ticker - filled with highlight color
+            SDL_SetRenderDrawColor(ren, COL_VIEWMODE_ACTIVE.r, COL_VIEWMODE_ACTIVE.g,
+                                   COL_VIEWMODE_ACTIVE.b, COL_VIEWMODE_ACTIVE.a);
+        } else {
+            // Inactive ticker - filled with background color
+            SDL_SetRenderDrawColor(ren, COL_VIEWMODE_BG.r, COL_VIEWMODE_BG.g,
+                                   COL_VIEWMODE_BG.b, COL_VIEWMODE_BG.a);
+        }
+        SDL_RenderFillRect(ren, &rect);
+
+        // Draw text centered in rectangle
+        RGBA textColor = (i == currentTickerIndex) ? COL_BG : COL_VIEWMODE_TEXT;
+        drawText(ren, font, ticker, currentX - rectW / 2, topY + rectHeight / 2,
+                 textColor, 1, 1);
+
+        currentX -= rectW + rectSpacing;
+    }
+}
+
 static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
                         const std::vector<PricePoint>& price_history,
                         const std::vector<std::string>& tickers, int currentTickerIndex, ViewMode viewMode,
@@ -383,14 +443,6 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
 
     // Reset mouse in chart area flag for this render cycle
     g_mouseInChartArea = false;
-
-    // View mode rectangles (left-aligned to chart edge)
-    const int barTopY = 5;
-    int rightEdge = renderViewModeBar(ren, fontSm, viewMode, barTopY, cL);
-
-    // Ticker info (to the right of view mode rectangles)
-    std::string tickerInfo = tickers[currentTickerIndex] + " - " + std::to_string(dispN) + " Trading Days";
-    drawText(ren, fontSm, tickerInfo, rightEdge + 20, barTopY + 15, COL_TEXT, 0, 1);
 
     if (price_history.empty()) {
         drawText(ren, font, "No data available",
@@ -510,6 +562,17 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
 
     // Remove clip for labels drawn outside chart area
     SDL_RenderSetClipRect(ren, nullptr);
+
+    // View mode rectangles and ticker buttons (drawn outside clipping region)
+    const int barTopY = 5;
+    int rightEdge = renderViewModeBar(ren, fontSm, viewMode, barTopY, cL);
+
+    // Ticker buttons (right-aligned to chart edge)
+    renderTickerBar(ren, fontSm, tickers, currentTickerIndex, barTopY, cR);
+
+    // Trading days info (to the right of view mode buttons)
+    std::string tickerInfo = std::to_string(dispN) + " Trading Days";
+    drawText(ren, fontSm, tickerInfo, rightEdge + 20, barTopY + 15, COL_TEXT, 0, 1);
 
     // ── Instructions ──
     drawText(ren, fontSm, "TAB: switch view | R: reload | F: fullscreen | UpDownKeys/Mouse Wheel: zoom | ESC: quit",
@@ -836,10 +899,40 @@ int main(int argc, char* argv[]) {
             case SDL_MOUSEBUTTONDOWN:
                 if (ev.button.button == SDL_BUTTON_LEFT) {
                     ViewMode clickedMode;
+                    int clickedTickerIndex;
                     if (getClickedViewMode(ev.button.x, ev.button.y, clickedMode)) {
                         viewMode = clickedMode;
                         appConfig.viewMode = viewMode;
                         saveConfig(appConfig);
+                        renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
+                        SDL_RenderPresent(ren);
+                    } else if (getClickedTicker(ev.button.x, ev.button.y, clickedTickerIndex)) {
+                        if (clickedTickerIndex != g_currentTickerIndex) {
+                            g_currentTickerIndex = clickedTickerIndex;
+                            appConfig.lastActiveTickerIndex = g_currentTickerIndex;
+                            saveConfig(appConfig);
+                            std::cout << "Switching to ticker: " << appConfig.tickers[g_currentTickerIndex] << " ...\n";
+
+                            int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
+                            curl_global_init(CURL_GLOBAL_DEFAULT);
+                            std::string json = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
+
+                            if (!json.empty()) {
+                                auto fresh = parseResponse(json, fetchDays);
+                                if (!fresh.empty()) {
+                                    price_history = std::move(fresh);
+                                    std::cout << "Loaded " << price_history.size()
+                                              << " trading days  ("
+                                              << price_history.front().date << "  ->  "
+                                              << price_history.back().date << ")\n";
+                                } else {
+                                    std::cerr << "No trading data found for " << appConfig.tickers[g_currentTickerIndex] << "\n";
+                                }
+                            } else {
+                                std::cerr << "Failed to fetch data for " << appConfig.tickers[g_currentTickerIndex] << ". Check network and ticker symbol.\n";
+                            }
+                            curl_global_cleanup();
+                        }
                         renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                         SDL_RenderPresent(ren);
                     }
