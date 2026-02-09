@@ -32,7 +32,7 @@
 // ─── Defaults ───
 static const std::string DEFAULT_TICKER = "VWCE.DE";
 constexpr int DEFAULT_DAYS = 30;
-static bool FULLSCREEN = false;
+static bool FULLSCREEN = true;
 
 // ─── Colour palette ───
 static constexpr RGBA COL_BG    = { 18,  18,  40, 255};
@@ -579,7 +579,7 @@ int main(int argc, char* argv[]) {
         TTF_Quit(); SDL_Quit(); return 1;
     }
 
-    Uint32 windowFlags = 0;
+    Uint32 windowFlags = SDL_WINDOW_HIDDEN; // Start hidden to prevent flashing
     if (FULLSCREEN) {
         windowFlags |= SDL_WINDOW_FULLSCREEN;
     } else {
@@ -617,14 +617,14 @@ int main(int argc, char* argv[]) {
 
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 
-    // Show window after all setup is complete to avoid flashing
-    SDL_ShowWindow(win);
-
     // ── Initial render ──
     Config appConfig = loadConfig();
     ViewMode viewMode = appConfig.viewMode;
     renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
     SDL_RenderPresent(ren);
+
+    // Show window after all setup and initial render is complete
+    SDL_ShowWindow(win);
 
     // ── Event loop ──
     bool running = true;
