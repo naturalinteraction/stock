@@ -2,7 +2,9 @@
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <string> // Added for std::string functions
+#include <string>
+#include <vector>
+#include <algorithm>
 
 // Mapping enum to string
 static std::map<ViewMode, std::string> viewModeToString = {
@@ -73,22 +75,50 @@ Config loadConfig(const std::string& filename) {
         }
     }
 
-    // Parse "ticker"
-    const std::string ticker_search_key = "\"ticker\":";
-    pos = content.find(ticker_search_key);
+    // Parse "tickers"
+    const std::string tickers_search_key = "\"tickers\":";
+    pos = content.find(tickers_search_key);
     if (pos != std::string::npos) {
-        size_t value_start_quote = content.find("\"", pos + ticker_search_key.length());
-        if (value_start_quote != std::string::npos) {
-            size_t value_end_quote = content.find("\"", value_start_quote + 1);
-            if (value_end_quote != std::string::npos) {
-                config.ticker = content.substr(value_start_quote + 1, value_end_quote - (value_start_quote + 1));
-            } else {
-                std::cerr << "Malformed ticker value in config file. Using default.\n";
+        size_t array_start = content.find("[", pos + tickers_search_key.length());
+        size_t array_end = content.find("]", array_start);
+
+        if (array_start != std::string::npos && array_end != std::string::npos && array_start < array_end) {
+            std::string tickers_str = content.substr(array_start + 1, array_end - (array_start + 1));
+            
+            // Clear default tickers
+            config.tickers.clear();
+
+            size_t start = 0;
+            size_t end = tickers_str.find(",");
+            while (end != std::string::npos) {
+                std::string ticker_val = tickers_str.substr(start, end - start);
+                // Remove leading/trailing whitespace and quotes
+                ticker_val.erase(0, ticker_val.find_first_not_of(" \t\"\n"));
+                ticker_val.erase(ticker_val.find_last_not_of(" \t\"\n") + 1);
+                config.tickers.push_back(ticker_val);
+                start = end + 1;
+                end = tickers_str.find(",", start);
             }
+            // Add the last ticker
+            std::string ticker_val = tickers_str.substr(start);
+            ticker_val.erase(0, ticker_val.find_first_not_of(" \t\"\n"));
+            ticker_val.erase(ticker_val.find_last_not_of(" \t\"\n") + 1);
+            config.tickers.push_back(ticker_val);
+
+            // If less than 6 tickers are provided, fill with default
+            while (config.tickers.size() < 6) {
+                config.tickers.push_back(CONFIG_DEFAULT_TICKER);
+            }
+            // If more than 6 tickers are provided, truncate
+            if (config.tickers.size() > 6) {
+                config.tickers.resize(6);
+            }
+
         } else {
-            std::cerr << "Malformed ticker entry in config file. Using default.\n";
+            std::cerr << "Malformed tickers array in config file. Using default.\n";
         }
     }
+
 
     // Parse "displayed_days"
     const std::string displayed_days_search_key = "\"displayed_days\":";
@@ -126,7 +156,15 @@ void saveConfig(const Config& config, const std::string& filename) {
     ofs << "{\n";
     ofs << "    \"view_mode\": \"" << viewModeToString[config.viewMode] << "\",\n";
     ofs << "    \"fullscreen\": " << (config.fullscreen ? "true" : "false") << ",\n";
-    ofs << "    \"ticker\": \"" << config.ticker << "\",\n";
+    ofs << "    \"tickers\": [\n";
+    for (size_t i = 0; i < config.tickers.size(); ++i) {
+        ofs << "        \"" << config.tickers[i] << "\"";
+        if (i < config.tickers.size() - 1) {
+            ofs << ",";
+        }
+        ofs << "\n";
+    }
+    ofs << "    ],\n";
     ofs << "    \"displayed_days\": " << config.displayedDays << "\n";
     ofs << "}\n";
     ofs.close();
