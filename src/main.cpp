@@ -57,6 +57,7 @@ static bool g_mouseInChartArea = false;
 // --- View mode tabs state ---
 static SDL_Rect g_viewModeTabs[4] = {}; // Rectangles for each tab
 static int g_viewModeTabCount = 0;      // Number of tabs
+static int g_currentTickerIndex = 0; // Index of the currently displayed ticker
 
 // ═══════════════════════  Network  ═══════════════════════
 
@@ -359,7 +360,7 @@ static int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode current
 
 static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
                         const std::vector<PricePoint>& price_history,
-                        const std::string& currentTicker, ViewMode viewMode,
+                        const std::vector<std::string>& tickers, int currentTickerIndex, ViewMode viewMode,
                         int displayDays, const WindowDimensions& winDim) {
     // Clear
     SDL_SetRenderDrawColor(ren, COL_BG.r, COL_BG.g, COL_BG.b, 255);
@@ -384,7 +385,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     int rightEdge = renderViewModeBar(ren, fontSm, viewMode, barTopY, cL);
 
     // Ticker info (to the right of view mode rectangles)
-    std::string tickerInfo = currentTicker + " - " + std::to_string(dispN) + " Trading Days";
+    std::string tickerInfo = tickers[currentTickerIndex] + " - " + std::to_string(dispN) + " Trading Days";
     drawText(ren, fontSm, tickerInfo, rightEdge + 20, barTopY + 15, COL_TEXT, 0, 1);
 
     if (price_history.empty()) {
@@ -595,7 +596,7 @@ int main(int argc, char* argv[]) {
 
     // Command line arguments override config
     if (argc >= 2) {
-        appConfig.tickers[0] = argv[1];
+        appConfig.tickers[g_currentTickerIndex] = argv[1];
     }
     if (argc >= 3) {
         appConfig.displayedDays = std::stoi(argv[2]);
@@ -608,11 +609,11 @@ int main(int argc, char* argv[]) {
 
 
     int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
-    std::cout << "Fetching " << FETCH_DATA_COUNT << " trading days for " << appConfig.tickers[0]
+    std::cout << "Fetching " << FETCH_DATA_COUNT << " trading days for " << appConfig.tickers[g_currentTickerIndex]
               << " (+" << LOOKBACK_DAYS << " lookback) ...\n";
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    std::string json = fetchJSON(appConfig.tickers[0], fetchDays);
+    std::string json = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
 
     if (json.empty()) {
         curl_global_cleanup();
@@ -622,7 +623,7 @@ int main(int argc, char* argv[]) {
 
     auto price_history = parseResponse(json, fetchDays);
     if (price_history.empty()) {
-        std::cerr << "No trading data found for " << appConfig.tickers[0] << "\n";
+        std::cerr << "No trading data found for " << appConfig.tickers[g_currentTickerIndex] << "\n";
         curl_global_cleanup();
         return 1;
     }
@@ -655,7 +656,7 @@ int main(int argc, char* argv[]) {
     Uint32 windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN; // Always start hidden and resizable
 
     SDL_Window* win = SDL_CreateWindow(
-        ("StockChart - " + appConfig.tickers[0]).c_str(),
+        ("StockChart - " + appConfig.tickers[g_currentTickerIndex]).c_str(),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         DEFAULT_GRAPH_WIDTH, DEFAULT_GRAPH_HEIGHT,
         windowFlags);
@@ -721,12 +722,40 @@ int main(int argc, char* argv[]) {
                     appConfig.viewMode = viewMode;
                     saveConfig(appConfig);
                     // Rerender immediately for TAB key press
-                    renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                    renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
+                    SDL_RenderPresent(ren);
+                }
+                else if (ev.key.keysym.sym == SDLK_SPACE) {
+                    g_currentTickerIndex = (g_currentTickerIndex + 1) % appConfig.tickers.size();
+                    std::cout << "Switching to ticker: " << appConfig.tickers[g_currentTickerIndex] << " ...\n";
+
+                    int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
+                    // Re-initialize curl for each fetch to prevent issues with persistent handles
+                    curl_global_init(CURL_GLOBAL_DEFAULT);
+                    std::string json = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
+
+                    if (!json.empty()) {
+                        auto fresh = parseResponse(json, fetchDays);
+                        if (!fresh.empty()) {
+                            price_history = std::move(fresh);
+                            std::cout << "Loaded " << price_history.size()
+                                      << " trading days  ("
+                                      << price_history.front().date << "  ->  "
+                                      << price_history.back().date << ")\n";
+                        } else {
+                            std::cerr << "No trading data found for " << appConfig.tickers[g_currentTickerIndex] << "\n";
+                        }
+                    } else {
+                        std::cerr << "Failed to fetch data for " << appConfig.tickers[g_currentTickerIndex] << ". Check network and ticker symbol.\n";
+                    }
+                    curl_global_cleanup();
+
+                    renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 else if (ev.key.keysym.sym == SDLK_r) {
                     std::cout << "Reloading " << appConfig.tickers[0] << " ...\n";
-                    std::string rj = fetchJSON(appConfig.tickers[0], fetchDays);
+                    std::string rj = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
                     if (!rj.empty()) {
                         auto fresh = parseResponse(rj, fetchDays);
                         if (!fresh.empty()) {
@@ -738,7 +767,7 @@ int main(int argc, char* argv[]) {
                         }
                     }
                     // Rerender immediately for R key press
-                    renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                    renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 else if (ev.key.keysym.sym == SDLK_f) {
@@ -757,19 +786,19 @@ int main(int argc, char* argv[]) {
                     SDL_GetWindowSize(win, &newWidth, &newHeight);
                     winDim = WindowDimensions::calculate(newWidth, newHeight);
 
-                    renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                    renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 else if (ev.key.keysym.sym == SDLK_UP) {
                     appConfig.displayedDays = std::max(10, appConfig.displayedDays - DISPLAYED_DAYS_STEP);
                     saveConfig(appConfig);
-                    renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                    renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 else if (ev.key.keysym.sym == SDLK_DOWN) {
                     appConfig.displayedDays = std::min(90, appConfig.displayedDays + DISPLAYED_DAYS_STEP);
                     saveConfig(appConfig);
-                    renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                    renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 break; // End of SDLK_DOWN case
@@ -780,7 +809,7 @@ int main(int argc, char* argv[]) {
                     appConfig.displayedDays = std::min(90, appConfig.displayedDays + DISPLAYED_DAYS_STEP);
                 }
                 saveConfig(appConfig);
-                renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                 SDL_RenderPresent(ren);
                 break; // End of SDL_MOUSEWHEEL case
             case SDL_MOUSEMOTION:
@@ -795,7 +824,7 @@ int main(int argc, char* argv[]) {
                         viewMode = clickedMode;
                         appConfig.viewMode = viewMode;
                         saveConfig(appConfig);
-                        renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                        renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                         SDL_RenderPresent(ren);
                     }
                 }
@@ -803,7 +832,7 @@ int main(int argc, char* argv[]) {
             case SDL_WINDOWEVENT:
                 if (ev.window.event == SDL_WINDOWEVENT_EXPOSED) {
                     // Rerender immediately for expose event
-                    renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                    renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 else if (ev.window.event == SDL_WINDOWEVENT_RESIZED) {
@@ -811,7 +840,7 @@ int main(int argc, char* argv[]) {
                     int newHeight = ev.window.data2;
                     winDim = WindowDimensions::calculate(newWidth, newHeight);
                     // Rerender immediately for resize event
-                    renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+                    renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 break;
@@ -819,7 +848,7 @@ int main(int argc, char* argv[]) {
         }
         // After processing all events, if mouse moved, render once
         if (mouseMoved) {
-            renderChart(ren, font, fontSm, price_history, appConfig.tickers[0], viewMode, appConfig.displayedDays, winDim);
+            renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
             SDL_RenderPresent(ren);
             mouseMoved = false; // Reset flag
         }
