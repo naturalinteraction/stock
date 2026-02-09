@@ -13,7 +13,8 @@
 #include "viewmode_bollinger.h"
 #include "viewmode_macross.h"
 #include "viewmode_stats.h"
-#include "viewmode_price_action.h"
+#include "config.h"
+
 
 #include <curl/curl.h>
 
@@ -315,9 +316,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
         case ViewMode::MACross:
             viewModeName = "MACross";
             break;
-        case ViewMode::PriceAction:
-            viewModeName = "PriceAction";
-            break;
+
         default: // Handle _COUNT and any other unhandled ViewMode values
             viewModeName = "Unknown";
             break;
@@ -419,8 +418,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
             renderBollingerOverlay(ren, fontSm, price_history, cr);
         else if (viewMode == ViewMode::MACross)
             renderMACrossOverlay(ren, fontSm, price_history, cr);
-        else if (viewMode == ViewMode::PriceAction)
-            renderPriceActionOverlay(ren, fontSm, price_history, cr);
+
     }
 
     // ── Last-price annotation ──
@@ -623,7 +621,8 @@ int main(int argc, char* argv[]) {
     SDL_ShowWindow(win);
 
     // ── Initial render ──
-    ViewMode viewMode = ViewMode::PriceChart;
+    Config appConfig = loadConfig();
+    ViewMode viewMode = appConfig.viewMode;
     renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
     SDL_RenderPresent(ren);
 
@@ -643,6 +642,8 @@ int main(int argc, char* argv[]) {
             else if (ev.key.keysym.sym == SDLK_TAB) {
                 viewMode = static_cast<ViewMode>(
                     (static_cast<int>(viewMode) + 1) % VIEW_MODE_COUNT);
+                appConfig.viewMode = viewMode;
+                saveConfig(appConfig);
                 renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
                 SDL_RenderPresent(ren);
             }
@@ -692,6 +693,7 @@ int main(int argc, char* argv[]) {
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_Quit();
+    saveConfig(appConfig);
     curl_global_cleanup();
     return 0;
 }
