@@ -31,6 +31,8 @@
 
 // ─── Defaults ───
 constexpr int DEFAULT_DAYS = 90;
+constexpr int DISPLAYED_DAYS_STEP = 5;
+constexpr int FETCH_DATA_COUNT = 90;
 
 // ─── Colour palette ───
 static constexpr RGBA COL_BG    = { 18,  18,  40, 255};
@@ -524,13 +526,12 @@ int main(int argc, char* argv[]) {
     std::string ticker = appConfig.ticker; // Initialize from config
     ViewMode viewMode = appConfig.viewMode; // Declare and initialize viewMode here
     bool FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN as a local variable from config
-    int days = appConfig.displayedDays;
 
     if (argc >= 2) ticker = argv[1]; // Command line argument overrides config
 
 
-    int fetchDays = days + LOOKBACK_DAYS;
-    std::cout << "Fetching " << days << " trading days for " << ticker
+    int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
+    std::cout << "Fetching " << FETCH_DATA_COUNT << " trading days for " << ticker
               << " (+" << LOOKBACK_DAYS << " lookback) ...\n";
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -683,6 +684,18 @@ int main(int argc, char* argv[]) {
                     renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
+                else if (ev.key.keysym.sym == SDLK_UP) {
+                    appConfig.displayedDays = std::max(10, appConfig.displayedDays - DISPLAYED_DAYS_STEP);
+                    saveConfig(appConfig);
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
+                    SDL_RenderPresent(ren);
+                }
+                else if (ev.key.keysym.sym == SDLK_DOWN) {
+                    appConfig.displayedDays = std::min(90, appConfig.displayedDays + DISPLAYED_DAYS_STEP);
+                    saveConfig(appConfig);
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
+                    SDL_RenderPresent(ren);
+                }
                 break;
             case SDL_MOUSEMOTION:
                 g_mouseX = ev.motion.x;
@@ -708,7 +721,7 @@ int main(int argc, char* argv[]) {
         }
         // After processing all events, if mouse moved, render once
         if (mouseMoved) {
-            renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+            renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
             SDL_RenderPresent(ren);
             mouseMoved = false; // Reset flag
         }
