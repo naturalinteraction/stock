@@ -19,6 +19,10 @@ void renderBollingerOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
     int total = static_cast<int>(price_history.size());
     if (dispN <= 0) return;
 
+    // Clip drawing to chart area
+    SDL_Rect clipRect = {cr.cL, cr.cT, cr.cW, cr.cH};
+    SDL_RenderSetClipRect(ren, &clipRect);
+
     // Compute bands for every displayed point using full lookback data.
     // For display index di, the real index is off + di.
     // We need BB_PERIOD points ending at off+di, i.e. real indices
@@ -83,6 +87,9 @@ void renderBollingerOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
         thickLine(ren, cr.toX(di - 1), cr.toY(bands[di - 1].mid),
                        cr.toX(di),     cr.toY(bands[di].mid));
     }
+
+    // Remove clip for labels drawn outside chart area
+    SDL_RenderSetClipRect(ren, nullptr);
 
     // Labels on the right edge
     const Band& last = bands[dispN - 1];
