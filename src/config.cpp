@@ -28,6 +28,9 @@ Config loadConfig(const std::string& filename) {
     std::ifstream ifs(filename);
     if (!ifs.is_open()) {
         std::cerr << "Config file " << filename << " not found. Creating default.\n";
+        for (int i = 0; i < 6; ++i) {
+            config.tickers.push_back(CONFIG_DEFAULT_TICKER);
+        }
         saveConfig(config, filename); // Save default config
         return config;
     }
@@ -85,9 +88,6 @@ Config loadConfig(const std::string& filename) {
         if (array_start != std::string::npos && array_end != std::string::npos && array_start < array_end) {
             std::string tickers_str = content.substr(array_start + 1, array_end - (array_start + 1));
             
-            // Clear default tickers
-            config.tickers.clear();
-
             size_t start = 0;
             size_t end = tickers_str.find(",");
             while (end != std::string::npos) {
@@ -105,9 +105,15 @@ Config loadConfig(const std::string& filename) {
             ticker_val.erase(ticker_val.find_last_not_of(" \t\"\n") + 1);
             config.tickers.push_back(ticker_val);
 
-            // If less than 6 tickers are provided, fill with default
+            // Determine the filler ticker: first parsed ticker, or CONFIG_DEFAULT_TICKER if none parsed
+            std::string fillerTicker = CONFIG_DEFAULT_TICKER;
+            if (!config.tickers.empty()) {
+                fillerTicker = config.tickers[0];
+            }
+
+            // If less than 6 tickers are provided, fill with fillerTicker
             while (config.tickers.size() < 6) {
-                config.tickers.push_back(CONFIG_DEFAULT_TICKER);
+                config.tickers.push_back(fillerTicker);
             }
             // If more than 6 tickers are provided, truncate
             if (config.tickers.size() > 6) {

@@ -14,11 +14,7 @@ struct Config {
     int displayedDays;
 
     // Default constructor
-    Config() : viewMode(ViewMode::PriceChart), fullscreen(false), displayedDays(10) {
-        for (int i = 0; i < 6; ++i) {
-            tickers.push_back(CONFIG_DEFAULT_TICKER);
-        }
-    }
+    Config() : viewMode(ViewMode::PriceChart), fullscreen(false), displayedDays(10) {}
 };
 
 Config loadConfig(const std::string& filename = CONFIG_FILE_PATH);
