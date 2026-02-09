@@ -38,13 +38,11 @@ Config loadConfig(const std::string& filename) {
     ifs.close();
 
     // Basic JSON parsing for "view_mode" property
-    const std::string search_key = "\"view_mode\":";
-    size_t pos = content.find(search_key);
+    const std::string view_mode_search_key = "\"view_mode\":";
+    size_t pos = content.find(view_mode_search_key);
     if (pos != std::string::npos) {
-        // Find the start of the value (after the colon and potential whitespace)
-        size_t value_start_quote = content.find("\"", pos + search_key.length());
+        size_t value_start_quote = content.find("\"", pos + view_mode_search_key.length());
         if (value_start_quote != std::string::npos) {
-            // Find the end of the value (closing quote)
             size_t value_end_quote = content.find("\"", value_start_quote + 1);
             if (value_end_quote != std::string::npos) {
                 std::string modeStr = content.substr(value_start_quote + 1, value_end_quote - (value_start_quote + 1));
@@ -53,6 +51,28 @@ Config loadConfig(const std::string& filename) {
                 } else {
                     std::cerr << "Unknown view_mode '" << modeStr << "' in config file. Using default.\n";
                 }
+            }
+        }
+    }
+
+    // Basic JSON parsing for "fullscreen" property
+    const std::string fullscreen_search_key = "\"fullscreen\":";
+    pos = content.find(fullscreen_search_key);
+    if (pos != std::string::npos) {
+        size_t value_start = pos + fullscreen_search_key.length();
+        // Skip whitespace
+        while (value_start < content.length() && (content[value_start] == ' ' || content[value_start] == '\t')) {
+            value_start++;
+        }
+        if (value_start < content.length()) {
+            size_t value_end = content.find_first_of(" \t\n\r,}", value_start);
+            std::string boolStr = content.substr(value_start, value_end - value_start);
+            if (boolStr == "true") {
+                config.fullscreen = true;
+            } else if (boolStr == "false") {
+                config.fullscreen = false;
+            } else {
+                std::cerr << "Unknown fullscreen value '" << boolStr << "' in config file. Using default.\n";
             }
         }
     }
@@ -71,7 +91,8 @@ void saveConfig(const Config& config, const std::string& filename) {
     }
 
     ofs << "{\n";
-    ofs << "    \"view_mode\": \"" << viewModeToString[config.viewMode] << "\"\n";
+    ofs << "    \"view_mode\": \"" << viewModeToString[config.viewMode] << "\",\n";
+    ofs << "    \"fullscreen\": " << (config.fullscreen ? "true" : "false") << "\n";
     ofs << "}\n";
     ofs.close();
 }

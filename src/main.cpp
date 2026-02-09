@@ -32,7 +32,7 @@
 // ─── Defaults ───
 static const std::string DEFAULT_TICKER = "VWCE.DE";
 constexpr int DEFAULT_DAYS = 30;
-static bool FULLSCREEN = true;
+static bool FULLSCREEN;
 
 // ─── Colour palette ───
 static constexpr RGBA COL_BG    = { 18,  18,  40, 255};
@@ -579,12 +579,7 @@ int main(int argc, char* argv[]) {
         TTF_Quit(); SDL_Quit(); return 1;
     }
 
-    Uint32 windowFlags = SDL_WINDOW_HIDDEN; // Start hidden to prevent flashing
-    if (FULLSCREEN) {
-        windowFlags |= SDL_WINDOW_FULLSCREEN;
-    } else {
-        windowFlags |= SDL_WINDOW_RESIZABLE;
-    }
+    Uint32 windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN; // Always start hidden and resizable
 
     SDL_Window* win = SDL_CreateWindow(
         ("StockChart - " + ticker).c_str(),
@@ -597,9 +592,12 @@ int main(int argc, char* argv[]) {
         TTF_Quit(); SDL_Quit(); return 1;
     }
 
-    if (!FULLSCREEN) {
-        SDL_SetWindowMinimumSize(win, MIN_GRAPH_WIDTH, MIN_GRAPH_HEIGHT);
+    // Set fullscreen mode explicitly if enabled in config
+    if (FULLSCREEN) {
+        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
     }
+    // Set minimum size unconditionally
+    SDL_SetWindowMinimumSize(win, MIN_GRAPH_WIDTH, MIN_GRAPH_HEIGHT);
 
     // Get actual window size (may differ from initial size in fullscreen)
     int winWidth, winHeight;
@@ -620,11 +618,19 @@ int main(int argc, char* argv[]) {
     // ── Initial render ──
     Config appConfig = loadConfig();
     ViewMode viewMode = appConfig.viewMode;
-    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
-    SDL_RenderPresent(ren);
+    FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN from config
 
     // Show window after all setup and initial render is complete
     SDL_ShowWindow(win);
+
+    // Apply fullscreen mode after showing the window if configured
+    if (FULLSCREEN) {
+        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
+        // Update winDim after setting fullscreen to get actual dimensions
+        int newWidth, newHeight;
+        SDL_GetWindowSize(win, &newWidth, &newHeight);
+        winDim = WindowDimensions::calculate(newWidth, newHeight);
+    }
 
     // ── Event loop ──
     bool running = true;
@@ -663,6 +669,25 @@ int main(int argc, char* argv[]) {
                         }
                     }
                     // Rerender immediately for R key press
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    SDL_RenderPresent(ren);
+                }
+                else if (ev.key.keysym.sym == SDLK_f) {
+                    FULLSCREEN = !FULLSCREEN;
+                    appConfig.fullscreen = FULLSCREEN;
+                    saveConfig(appConfig);
+
+                    if (FULLSCREEN) {
+                        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
+                    } else {
+                        SDL_SetWindowFullscreen(win, 0); // Go back to windowed mode
+                    }
+
+                    // Get new window size after fullscreen toggle
+                    int newWidth, newHeight;
+                    SDL_GetWindowSize(win, &newWidth, &newHeight);
+                    winDim = WindowDimensions::calculate(newWidth, newHeight);
+
                     renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
                     SDL_RenderPresent(ren);
                 }
