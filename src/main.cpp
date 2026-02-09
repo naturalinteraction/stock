@@ -524,7 +524,7 @@ int main(int argc, char* argv[]) {
     std::string ticker = appConfig.ticker; // Initialize from config
     ViewMode viewMode = appConfig.viewMode; // Declare and initialize viewMode here
     bool FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN as a local variable from config
-    int days = DEFAULT_DAYS;
+    int days = appConfig.displayedDays;
 
     if (argc >= 2) ticker = argv[1]; // Command line argument overrides config
 
@@ -644,7 +644,7 @@ int main(int argc, char* argv[]) {
                     appConfig.viewMode = viewMode;
                     saveConfig(appConfig);
                     // Rerender immediately for TAB key press
-                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 else if (ev.key.keysym.sym == SDLK_r) {
@@ -661,7 +661,7 @@ int main(int argc, char* argv[]) {
                         }
                     }
                     // Rerender immediately for R key press
-                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 else if (ev.key.keysym.sym == SDLK_f) {
@@ -680,7 +680,7 @@ int main(int argc, char* argv[]) {
                     SDL_GetWindowSize(win, &newWidth, &newHeight);
                     winDim = WindowDimensions::calculate(newWidth, newHeight);
 
-                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 break;
@@ -692,7 +692,7 @@ int main(int argc, char* argv[]) {
             case SDL_WINDOWEVENT:
                 if (ev.window.event == SDL_WINDOWEVENT_EXPOSED) {
                     // Rerender immediately for expose event
-                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 else if (ev.window.event == SDL_WINDOWEVENT_RESIZED) {
@@ -700,7 +700,7 @@ int main(int argc, char* argv[]) {
                     int newHeight = ev.window.data2;
                     winDim = WindowDimensions::calculate(newWidth, newHeight);
                     // Rerender immediately for resize event
-                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
                 break;

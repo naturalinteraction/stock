@@ -90,6 +90,26 @@ Config loadConfig(const std::string& filename) {
         }
     }
 
+    // Parse "displayed_days"
+    const std::string displayed_days_search_key = "\"displayed_days\":";
+    pos = content.find(displayed_days_search_key);
+    if (pos != std::string::npos) {
+        size_t value_start = pos + displayed_days_search_key.length();
+        // Skip whitespace
+        while (value_start < content.length() && (content[value_start] == ' ' || content[value_start] == '\t')) {
+            value_start++;
+        }
+        if (value_start < content.length()) {
+            size_t value_end = content.find_first_of(" \t\n\r,}", value_start);
+            std::string daysStr = content.substr(value_start, value_end - value_start);
+            try {
+                config.displayedDays = std::stoi(daysStr);
+            } catch (...) {
+                std::cerr << "Malformed displayed_days value '" << daysStr << "' in config file. Using default.\n";
+            }
+        }
+    }
+
     return config;
 }
 
@@ -106,7 +126,8 @@ void saveConfig(const Config& config, const std::string& filename) {
     ofs << "{\n";
     ofs << "    \"view_mode\": \"" << viewModeToString[config.viewMode] << "\",\n";
     ofs << "    \"fullscreen\": " << (config.fullscreen ? "true" : "false") << ",\n";
-    ofs << "    \"ticker\": \"" << config.ticker << "\"\n";
+    ofs << "    \"ticker\": \"" << config.ticker << "\",\n";
+    ofs << "    \"displayed_days\": " << config.displayedDays << "\n";
     ofs << "}\n";
     ofs.close();
 }
