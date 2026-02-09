@@ -696,7 +696,17 @@ int main(int argc, char* argv[]) {
                     renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
                     SDL_RenderPresent(ren);
                 }
-                break;
+                break; // End of SDLK_DOWN case
+            case SDL_MOUSEWHEEL:
+                if (ev.wheel.y > 0) { // Scroll up
+                    appConfig.displayedDays = std::max(10, appConfig.displayedDays - DISPLAYED_DAYS_STEP);
+                } else if (ev.wheel.y < 0) { // Scroll down
+                    appConfig.displayedDays = std::min(90, appConfig.displayedDays + DISPLAYED_DAYS_STEP);
+                }
+                saveConfig(appConfig);
+                renderChart(ren, font, fontSm, price_history, ticker, viewMode, appConfig.displayedDays, winDim);
+                SDL_RenderPresent(ren);
+                break; // End of SDL_MOUSEWHEEL case
             case SDL_MOUSEMOTION:
                 g_mouseX = ev.motion.x;
                 g_mouseY = ev.motion.y;
