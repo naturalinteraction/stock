@@ -628,61 +628,79 @@ int main(int argc, char* argv[]) {
 
     // ── Event loop ──
     bool running = true;
+    bool mouseMoved = false; // Flag to track if mouse moved
     while (running) {
         SDL_Event ev;
-        SDL_WaitEvent(&ev);
-        switch (ev.type) {
-        case SDL_QUIT:
-            running = false;
-            break;
-        case SDL_KEYDOWN:
-            if (ev.key.keysym.sym == SDLK_ESCAPE ||
-                ev.key.keysym.sym == SDLK_q)
+        while (SDL_PollEvent(&ev)) { // Process all events in the queue
+            switch (ev.type) {
+            case SDL_QUIT:
                 running = false;
-            else if (ev.key.keysym.sym == SDLK_TAB) {
-                viewMode = static_cast<ViewMode>(
-                    (static_cast<int>(viewMode) + 1) % VIEW_MODE_COUNT);
-                appConfig.viewMode = viewMode;
-                saveConfig(appConfig);
-                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
-                SDL_RenderPresent(ren);
-            }
-            else if (ev.key.keysym.sym == SDLK_r) {
-                std::cout << "Reloading " << ticker << " ...\n";
-                std::string rj = fetchJSON(ticker, fetchDays);
-                if (!rj.empty()) {
-                    auto fresh = parseResponse(rj, fetchDays);
-                    if (!fresh.empty()) {
-                        price_history = std::move(fresh);
-                        std::cout << "Loaded " << price_history.size()
-                                  << " trading days  ("
-                                  << price_history.front().date << "  ->  "
-                                  << price_history.back().date << ")\n";
-                    }
+                break;
+            case SDL_KEYDOWN:
+                if (ev.key.keysym.sym == SDLK_ESCAPE ||
+                    ev.key.keysym.sym == SDLK_q)
+                    running = false;
+                else if (ev.key.keysym.sym == SDLK_TAB) {
+                    viewMode = static_cast<ViewMode>(
+                        (static_cast<int>(viewMode) + 1) % VIEW_MODE_COUNT);
+                    appConfig.viewMode = viewMode;
+                    saveConfig(appConfig);
+                    // Rerender immediately for TAB key press
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    SDL_RenderPresent(ren);
                 }
-                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
-                SDL_RenderPresent(ren);
+                else if (ev.key.keysym.sym == SDLK_r) {
+                    std::cout << "Reloading " << ticker << " ...\n";
+                    std::string rj = fetchJSON(ticker, fetchDays);
+                    if (!rj.empty()) {
+                        auto fresh = parseResponse(rj, fetchDays);
+                        if (!fresh.empty()) {
+                            price_history = std::move(fresh);
+                            std::cout << "Loaded " << price_history.size()
+                                      << " trading days  ("
+                                      << price_history.front().date << "  ->  "
+                                      << price_history.back().date << ")\n";
+                        }
+                    }
+                    // Rerender immediately for R key press
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    SDL_RenderPresent(ren);
+                }
+                break;
+            case SDL_MOUSEMOTION:
+                g_mouseX = ev.motion.x;
+                g_mouseY = ev.motion.y;
+                mouseMoved = true; // Set flag, don't render immediately
+                break;
+            case SDL_WINDOWEVENT:
+                if (ev.window.event == SDL_WINDOWEVENT_EXPOSED) {
+                    // Rerender immediately for expose event
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    SDL_RenderPresent(ren);
+                }
+                else if (ev.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    int newWidth = ev.window.data1;
+                    int newHeight = ev.window.data2;
+                    winDim = WindowDimensions::calculate(newWidth, newHeight);
+                    // Rerender immediately for resize event
+                    renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
+                    SDL_RenderPresent(ren);
+                }
+                break;
             }
-            break;
-        case SDL_MOUSEMOTION:
-            g_mouseX = ev.motion.x;
-            g_mouseY = ev.motion.y;
+        }
+        // After processing all events, if mouse moved, render once
+        if (mouseMoved) {
             renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
             SDL_RenderPresent(ren);
-            break;
-        case SDL_WINDOWEVENT:
-            if (ev.window.event == SDL_WINDOWEVENT_EXPOSED) {
-                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
-                SDL_RenderPresent(ren);
-            }
-            else if (ev.window.event == SDL_WINDOWEVENT_RESIZED) {
-                int newWidth = ev.window.data1;
-                int newHeight = ev.window.data2;
-                winDim = WindowDimensions::calculate(newWidth, newHeight);
-                renderChart(ren, font, fontSm, price_history, ticker, viewMode, days, winDim);
-                SDL_RenderPresent(ren);
-            }
-            break;
+            mouseMoved = false; // Reset flag
+        }
+        // If no events are pending, and no mouse motion, SDL_WaitEvent will block until next event.
+        // If there are events pending, SDL_PollEvent will consume them.
+        // This structure ensures that rendering happens either immediately for certain events
+        // or once per frame for coalesced mouse motion.
+        if (!SDL_PollEvent(NULL) && !mouseMoved) { // Only wait if no events are pending and mouse didn't move
+            SDL_WaitEvent(NULL); // Wait for an event to avoid busy-waiting
         }
     }
 
