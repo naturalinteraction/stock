@@ -435,7 +435,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     }
 
     // ── Instructions ──
-    drawText(ren, fontSm, "TAB: switch view | R: reload | Q/ESC: quit",
+    drawText(ren, fontSm, "TAB: switch view | R: reload | F: fullscreen | UpDownKeys/Mouse Wheel: zoom | ESC: quit",
              winDim.width / 2, winDim.height - 16, COL_GRID, 1, 1);
 
     // ── Mouse hover label ──
@@ -636,8 +636,7 @@ int main(int argc, char* argv[]) {
                 running = false;
                 break;
             case SDL_KEYDOWN:
-                if (ev.key.keysym.sym == SDLK_ESCAPE ||
-                    ev.key.keysym.sym == SDLK_q)
+                if (ev.key.keysym.sym == SDLK_ESCAPE)
                     running = false;
                 else if (ev.key.keysym.sym == SDLK_TAB) {
                     viewMode = static_cast<ViewMode>(
