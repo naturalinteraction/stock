@@ -45,6 +45,9 @@ static constexpr RGBA COL_TITLE = {240, 240, 255, 255};
 static constexpr RGBA COL_DOT   = {  0, 255, 140, 255};
 static constexpr RGBA COL_HOVER_LABEL = {255, 255, 255, 255}; // White for hover label
 static constexpr RGBA COL_LABEL_BG    = {0, 0, 0, 30}; // Semi-transparent dark background (alpha 90 out of 255)
+static constexpr RGBA COL_VIEWMODE_BG = {35, 35, 50, 255};      // Inactive tab (dark gray)
+static constexpr RGBA COL_VIEWMODE_ACTIVE = {130, 130, 150, 255}; // Active tab (light gray)
+static constexpr RGBA COL_VIEWMODE_TEXT = {180, 180, 200, 255}; // Text inside rectangles
 
 // --- Mouse hover state ---
 static int g_mouseX = 0;
@@ -279,6 +282,59 @@ void drawDashedHLine(SDL_Renderer* ren, int x1, int x2, int y,
 
 // ═══════════════════════  Chart renderer  ═══════════════════════
 
+static std::string getViewModeName(ViewMode mode) {
+    switch (mode) {
+        case ViewMode::PriceChart:      return "Price";
+        case ViewMode::PriceChartStats: return "Stats";
+        case ViewMode::Bollinger:       return "Bollinger";
+        case ViewMode::MACross:         return "MACross";
+        default:                        return "Unknown";
+    }
+}
+
+static int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode currentMode,
+                             int topY, int leftMargin) {
+    const int rectHeight = 30;
+    const int rectSpacing = 10;
+    const int rectPadding = 12;
+
+    int currentX = leftMargin;
+
+    // Draw each rectangle
+    for (int i = 0; i < VIEW_MODE_COUNT; i++) {
+        ViewMode mode = static_cast<ViewMode>(i);
+        std::string name = getViewModeName(mode);
+
+        int textW, textH;
+        TTF_SizeText(font, name.c_str(), &textW, &textH);
+
+        int rectW = textW + 2 * rectPadding;
+        SDL_Rect rect = {currentX, topY, rectW, rectHeight};
+
+        // Draw filled rectangle
+        if (mode == currentMode) {
+            // Active view mode - filled with highlight color
+            SDL_SetRenderDrawColor(ren, COL_VIEWMODE_ACTIVE.r, COL_VIEWMODE_ACTIVE.g,
+                                   COL_VIEWMODE_ACTIVE.b, COL_VIEWMODE_ACTIVE.a);
+        } else {
+            // Inactive view mode - filled with background color
+            SDL_SetRenderDrawColor(ren, COL_VIEWMODE_BG.r, COL_VIEWMODE_BG.g,
+                                   COL_VIEWMODE_BG.b, COL_VIEWMODE_BG.a);
+        }
+        SDL_RenderFillRect(ren, &rect);
+
+        // Draw text centered in rectangle
+        RGBA textColor = (mode == currentMode) ? COL_BG : COL_VIEWMODE_TEXT;
+        drawText(ren, font, name, currentX + rectW / 2, topY + rectHeight / 2,
+                 textColor, 1, 1);
+
+        currentX += rectW + rectSpacing;
+    }
+
+    // Return the right edge position (rightmost x + spacing)
+    return currentX - rectSpacing;
+}
+
 static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
                         const std::vector<PricePoint>& price_history,
                         const std::string& ticker, ViewMode viewMode,
@@ -301,32 +357,13 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     // Reset mouse in chart area flag for this render cycle
     g_mouseInChartArea = false;
 
-    // Title
-    std::string viewModeName;
-    switch (viewMode) {
-        case ViewMode::PriceChart:
-            viewModeName = ""; // As requested, empty for base chart
-            break;
-        case ViewMode::PriceChartStats:
-            viewModeName = "Stats";
-            break;
-        case ViewMode::Bollinger:
-            viewModeName = "Bollinger";
-            break;
-        case ViewMode::MACross:
-            viewModeName = "MACross";
-            break;
+    // View mode rectangles (left-aligned to chart edge)
+    const int barTopY = 5;
+    int rightEdge = renderViewModeBar(ren, fontSm, viewMode, barTopY, cL);
 
-        default: // Handle _COUNT and any other unhandled ViewMode values
-            viewModeName = "Unknown";
-            break;
-    }
-
-    std::string title = ticker + " - " + std::to_string(dispN) + " Trading Days";
-    if (!viewModeName.empty()) {
-        title += " (" + viewModeName + ")";
-    }
-    drawText(ren, font, title, winDim.width / 2, 14, COL_TITLE, 1, 0);
+    // Ticker info (to the right of view mode rectangles)
+    std::string tickerInfo = ticker + " - " + std::to_string(dispN) + " Trading Days";
+    drawText(ren, fontSm, tickerInfo, rightEdge + 20, barTopY + 15, COL_TEXT, 0, 1);
 
     if (price_history.empty()) {
         drawText(ren, font, "No data available",
