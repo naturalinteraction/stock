@@ -27,6 +27,10 @@ void renderMACrossOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
     int total = static_cast<int>(price_history.size());
     if (dispN <= 0) return;
 
+    // Clip drawing to chart area
+    SDL_Rect clipRect = {cr.cL, cr.cT, cr.cW, cr.cH};
+    SDL_RenderSetClipRect(ren, &clipRect);
+
     // Compute both SMAs for each displayed point
     struct MA { double s, l; bool validS, validL; };
     std::vector<MA> ma(dispN);
@@ -81,6 +85,9 @@ void renderMACrossOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
             SDL_RenderFillRect(ren, &dot);
         }
     }
+
+    // Remove clip for labels drawn outside chart area
+    SDL_RenderSetClipRect(ren, nullptr);
 
     // Labels on the right edge
     if (ma[dispN - 1].validS) {

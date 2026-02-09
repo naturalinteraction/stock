@@ -373,6 +373,10 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     const int cW = cR - cL;
     const int cH = cB - cT;
 
+    // Clip drawing to chart area
+    SDL_Rect clipRect = {cL, cT, cW, cH};
+    SDL_RenderSetClipRect(ren, &clipRect);
+
     int total = static_cast<int>(price_history.size());
     int dispN = std::min(total, displayDays);
     int off   = total - dispN;          // lookback data lives at 0..off-1
@@ -503,6 +507,9 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
             SDL_RenderDrawPoint(ren, dx, y);
         drawText(ren, fontSm, oss.str(), cR + 4, y, COL_DOT, 0, 1);
     }
+
+    // Remove clip for labels drawn outside chart area
+    SDL_RenderSetClipRect(ren, nullptr);
 
     // ── Instructions ──
     drawText(ren, fontSm, "TAB: switch view | R: reload | F: fullscreen | UpDownKeys/Mouse Wheel: zoom | ESC: quit",

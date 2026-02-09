@@ -129,6 +129,10 @@ void renderPriceActionOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
     int total = static_cast<int>(price_history.size());
     if (cr.N <= 0 || cr.displayStart + cr.N > total) return;
 
+    // Clip drawing to chart area
+    SDL_Rect clipRect = {cr.cL, cr.cT, cr.cW, cr.cH};
+    SDL_RenderSetClipRect(ren, &clipRect);
+
     std::vector<double> sr_levels;
 
     // Identify potential swing highs and lows within the displayed range
@@ -163,6 +167,9 @@ void renderPriceActionOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
         sr_levels = filtered_sr_levels;
         std::sort(sr_levels.begin(), sr_levels.end());
     }
+
+    // Remove clip for labels drawn outside chart area
+    SDL_RenderSetClipRect(ren, nullptr);
 
     // Draw S/R levels
     SDL_SetRenderDrawColor(ren, COL_SR_LEVEL.r, COL_SR_LEVEL.g,

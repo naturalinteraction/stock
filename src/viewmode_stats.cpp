@@ -15,6 +15,10 @@ void renderStatsOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
     int off = cr.displayStart;
     if (N <= 0) return;
 
+    // Clip drawing to chart area
+    SDL_Rect clipRect = {cr.cL, cr.cT, cr.cW, cr.cH};
+    SDL_RenderSetClipRect(ren, &clipRect);
+
     double sum = 0;
     for (int i = 0; i < N; ++i) sum += price_history[off + i].price;
     double mean = sum / N;
@@ -25,6 +29,9 @@ void renderStatsOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
         sq += d * d;
     }
     double sigma = std::sqrt(sq / N);
+
+    // Remove clip for labels drawn outside chart area
+    SDL_RenderSetClipRect(ren, nullptr);
 
     struct StatLine { double val; RGBA col; std::string label; };
     StatLine lines[] = {
