@@ -8,11 +8,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Clean:** `make clean`
 
-**Run:** `./bin/stock [TICKER] [DAYS]`
-- Example: `./bin/stock AAPL 90`
-- Defaults: TICKER=VWCE.DE, DAYS=30
+**Run:** `./bin/stock`
+- Loads last active ticker from config.json, or defaults to VWCE.DE
+- Default display: 30 days of data
 
-**Cycle view modes:** Press TAB while running
+**Keyboard controls:**
+- **TAB** - Cycle through view modes (Candlestick, Bollinger Bands, MA Cross, Stats)
+- **SPACE** - Cycle through available tickers
+- **Mouse wheel** - Zoom in/out (increments by 1 day per scroll)
+
+**UI controls:**
+- Click ticker buttons (right side) to switch tickers
+- Hover over chart for price/date labels
+
+**REST API Server:**
+- Server runs on `http://localhost:8080`
+- `POST /set-ticker` - Change ticker (JSON: `{"ticker": "AAPL"}`)
+- `GET /tickers` - List available tickers
 
 ## Project Overview
 
@@ -28,8 +40,11 @@ Stock is a C++ SDL2-based stock price chart viewer with multiple analysis view m
 
 **Main components:**
 - `src/chart.h` - Core data structures and constants (PricePoint, ChartRegion, ViewMode enum, layout constants)
-- `src/main.cpp` - Application entry point, event loop, data fetching, chart rendering orchestration
+- `src/main.cpp` - Application entry point, event loop, data fetching, chart rendering, UI interactions
 - `src/viewmode_*.cpp/.h` - Individual view mode implementations
+- `src/rest_server.cpp/.h` - HTTP server for remote ticker changes (/set-ticker, /tickers endpoints)
+- `src/config.h` - Configuration file management for persisting selected ticker and UI state
+- `src/mcp_bridge.js` - MCP server bridge for Claude integration (allows ticker changes via Claude Code)
 
 **Data flow:**
 1. Fetch historical price data from Yahoo Finance using libcurl
@@ -79,3 +94,7 @@ The `_COUNT` sentinel in ViewMode enum is used to track total view modes. After 
 - All coordinates in pixel space; price data normalized via ChartRegion transforms
 - Font handling: Two fonts loaded - `fontLg` (title) and `fontSm` (labels). Must call TTF_CloseFont() on cleanup.
 - Colors defined as static RGBA constants at top of main.cpp; reuse these rather than hardcoding values
+- **Configuration:** Last selected ticker and view preferences are saved to `config.json` in the working directory and auto-loaded on startup
+- **REST Server:** Runs asynchronously on port 8080; ticker changes from REST API are validated and trigger immediate UI updates via thread-safe event signaling
+- **UI Elements:** Ticker buttons are positioned at right edge of chart area; view mode tabs are displayed at bottom left. Both update dynamically as features are cycled.
+- **Ticker Data:** Default tickers are hardcoded and managed via `DEFAULT_TICKERS`; custom tickers can be added via config.json
