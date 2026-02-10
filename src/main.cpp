@@ -727,7 +727,7 @@ int main(int, char* []) {
     Uint32 windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN; // Always start hidden and resizable
 
     SDL_Window* win = SDL_CreateWindow(
-        ("StockChart - " + appConfig.tickers[g_currentTickerIndex]).c_str(),
+        ("Stock - " + appConfig.tickers[g_currentTickerIndex]).c_str(),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         DEFAULT_GRAPH_WIDTH, DEFAULT_GRAPH_HEIGHT,
         windowFlags);
@@ -814,7 +814,7 @@ int main(int, char* []) {
                 curl_global_cleanup();
                 
                 // Update window title
-                SDL_SetWindowTitle(win, ("StockChart - " + appConfig.tickers[g_currentTickerIndex]).c_str());
+                SDL_SetWindowTitle(win, ("Stock - " + appConfig.tickers[g_currentTickerIndex]).c_str());
                 
                 // Render immediately
                 renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
