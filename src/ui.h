@@ -9,6 +9,7 @@
 // UI color palette
 namespace UIColors {
     static constexpr RGBA VIEWMODE_BG     = {35, 35, 50, 255};      // Inactive tab
+    static constexpr RGBA VIEWMODE_HOVER  = {60, 60, 80, 255};      // Hover state
     static constexpr RGBA VIEWMODE_ACTIVE = {130, 130, 150, 255};   // Active tab
     static constexpr RGBA VIEWMODE_TEXT   = {180, 180, 200, 255};   // Text inside rectangles
 }
@@ -20,9 +21,17 @@ std::string getViewModeName(ViewMode mode);
 // Returns true and sets outMode if clicked, false otherwise
 bool getClickedViewMode(int mouseX, int mouseY, ViewMode& outMode);
 
+// Check if mouse is hovering over any view mode tab
+// Returns true and sets outMode if hovering, false otherwise
+bool getHoveredViewMode(int mouseX, int mouseY, ViewMode& outMode);
+
 // Check if mouse click is within any ticker button
 // Returns true and sets outTickerIndex if clicked, false otherwise
 bool getClickedTicker(int mouseX, int mouseY, int& outTickerIndex);
+
+// Check if mouse is hovering over any ticker button
+// Returns true and sets outTickerIndex if hovering, false otherwise
+bool getHoveredTicker(int mouseX, int mouseY, int& outTickerIndex);
 
 // Render view mode tab bar at the top
 // Returns the right edge position of the rendered tabs

@@ -41,7 +41,31 @@ bool getClickedViewMode(int mouseX, int mouseY, ViewMode& outMode) {
     return false;
 }
 
+bool getHoveredViewMode(int mouseX, int mouseY, ViewMode& outMode) {
+    for (int i = 0; i < g_viewModeTabCount; i++) {
+        const SDL_Rect& tab = g_viewModeTabs[i];
+        if (mouseX >= tab.x && mouseX < tab.x + tab.w &&
+            mouseY >= tab.y && mouseY < tab.y + tab.h) {
+            outMode = static_cast<ViewMode>(i);
+            return true;
+        }
+    }
+    return false;
+}
+
 bool getClickedTicker(int mouseX, int mouseY, int& outTickerIndex) {
+    for (int i = 0; i < g_tickerButtonCount; i++) {
+        const SDL_Rect& button = g_tickerButtons[i];
+        if (mouseX >= button.x && mouseX < button.x + button.w &&
+            mouseY >= button.y && mouseY < button.y + button.h) {
+            outTickerIndex = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool getHoveredTicker(int mouseX, int mouseY, int& outTickerIndex) {
     for (int i = 0; i < g_tickerButtonCount; i++) {
         const SDL_Rect& button = g_tickerButtons[i];
         if (mouseX >= button.x && mouseX < button.x + button.w &&
@@ -62,6 +86,10 @@ int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode currentMode,
     int currentX = leftMargin;
     g_viewModeTabCount = VIEW_MODE_COUNT;
 
+    // Check hover state once
+    ViewMode hoveredMode;
+    bool isHovering = getHoveredViewMode(g_mouseX, g_mouseY, hoveredMode);
+
     // Draw each rectangle
     for (int i = 0; i < VIEW_MODE_COUNT; i++) {
         ViewMode mode = static_cast<ViewMode>(i);
@@ -81,6 +109,10 @@ int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode currentMode,
             // Active view mode - filled with highlight color
             SDL_SetRenderDrawColor(ren, UIColors::VIEWMODE_ACTIVE.r, UIColors::VIEWMODE_ACTIVE.g,
                                    UIColors::VIEWMODE_ACTIVE.b, UIColors::VIEWMODE_ACTIVE.a);
+        } else if (isHovering && mode == hoveredMode) {
+            // Hovered but not active - filled with hover color
+            SDL_SetRenderDrawColor(ren, UIColors::VIEWMODE_HOVER.r, UIColors::VIEWMODE_HOVER.g,
+                                   UIColors::VIEWMODE_HOVER.b, UIColors::VIEWMODE_HOVER.a);
         } else {
             // Inactive view mode - filled with background color
             SDL_SetRenderDrawColor(ren, UIColors::VIEWMODE_BG.r, UIColors::VIEWMODE_BG.g,
@@ -109,6 +141,10 @@ void renderTickerBar(SDL_Renderer* ren, TTF_Font* font, const std::vector<std::s
     int currentX = rightMargin;
     g_tickerButtonCount = std::min(6, static_cast<int>(tickers.size()));
 
+    // Check hover state once
+    int hoveredTickerIndex;
+    bool isHovering = getHoveredTicker(g_mouseX, g_mouseY, hoveredTickerIndex);
+
     // Draw each ticker button from right to left
     for (int i = g_tickerButtonCount - 1; i >= 0; i--) {
         const std::string& ticker = tickers[i];
@@ -127,6 +163,10 @@ void renderTickerBar(SDL_Renderer* ren, TTF_Font* font, const std::vector<std::s
             // Active ticker - filled with highlight color
             SDL_SetRenderDrawColor(ren, UIColors::VIEWMODE_ACTIVE.r, UIColors::VIEWMODE_ACTIVE.g,
                                    UIColors::VIEWMODE_ACTIVE.b, UIColors::VIEWMODE_ACTIVE.a);
+        } else if (isHovering && i == hoveredTickerIndex) {
+            // Hovered but not active - filled with hover color
+            SDL_SetRenderDrawColor(ren, UIColors::VIEWMODE_HOVER.r, UIColors::VIEWMODE_HOVER.g,
+                                   UIColors::VIEWMODE_HOVER.b, UIColors::VIEWMODE_HOVER.a);
         } else {
             // Inactive ticker - filled with background color
             SDL_SetRenderDrawColor(ren, UIColors::VIEWMODE_BG.r, UIColors::VIEWMODE_BG.g,
