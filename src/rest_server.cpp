@@ -38,6 +38,7 @@ void RestServer::stop() {
     m_running.store(false);
     
     if (m_serverSocket >= 0) {
+        shutdown(m_serverSocket, SHUT_RDWR);
         close(m_serverSocket);
         m_serverSocket = -1;
     }
@@ -95,7 +96,7 @@ void RestServer::serverLoop() {
         FD_SET(m_serverSocket, &readSet);
         
         struct timeval timeout;
-        timeout.tv_sec = 10; // 10 seconds timeout
+        timeout.tv_sec = 1;
         timeout.tv_usec = 0;
         
         int selectResult = select(m_serverSocket + 1, &readSet, nullptr, nullptr, &timeout);
@@ -111,25 +112,46 @@ void RestServer::serverLoop() {
             continue;
         }
         
-        // Read request
+        // Read request - may need multiple recv() calls to get full body
+        std::string request;
         char buffer[4096];
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
         if (bytesReceived > 0) {
             buffer[bytesReceived] = '\0';
-            
-            // Parse HTTP request
-            std::string request(buffer);
+            request.append(buffer, bytesReceived);
+
+            // Check if we need to read more (Content-Length vs body received)
+            size_t headerEnd = request.find("\r\n\r\n");
+            if (headerEnd != std::string::npos) {
+                size_t bodyReceived = request.size() - (headerEnd + 4);
+                // Parse Content-Length from headers
+                size_t contentLength = 0;
+                size_t clPos = request.find("Content-Length:");
+                if (clPos == std::string::npos)
+                    clPos = request.find("content-length:");
+                if (clPos != std::string::npos) {
+                    contentLength = std::stoul(request.substr(clPos + 15));
+                }
+                // Keep reading until we have the full body
+                while (bodyReceived < contentLength) {
+                    bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+                    if (bytesReceived <= 0) break;
+                    request.append(buffer, bytesReceived);
+                    bodyReceived += bytesReceived;
+                }
+            }
+
+            // Parse HTTP request line
             std::istringstream iss(request);
             std::string method, path, version;
             iss >> method >> path >> version;
-            
+
             // Find body if any
             std::string body;
-            size_t bodyStart = request.find("\r\n\r\n");
-            if (bodyStart != std::string::npos) {
-                body = request.substr(bodyStart + 4);
+            if (headerEnd != std::string::npos) {
+                body = request.substr(headerEnd + 4);
             }
-            
+
             handleRequest(clientSocket, method, path, body);
         }
         
