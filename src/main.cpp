@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
@@ -137,6 +138,7 @@ SDLResources initSDL(const Config& appConfig, bool& fullscreen) {
 }
 
 void cleanup(SDLResources& resources, RestServer& restServer, Config& appConfig) {
+    system("pkill -f mcp_bridge.py 2>/dev/null");
     restServer.stop();
     SDL_DestroyRenderer(resources.renderer);
     SDL_DestroyWindow(resources.window);
@@ -151,6 +153,14 @@ void cleanup(SDLResources& resources, RestServer& restServer, Config& appConfig)
 void initREST(RestServer& restServer, const Config& appConfig) {
     restServer.setAvailableTickers(appConfig.tickers);
     restServer.start(8080);
+}
+
+void initMCP() {
+    // Kill any existing mcp_bridge.py process
+    system("pkill -f mcp_bridge.py 2>/dev/null");
+
+    // Launch mcp_bridge.py in background
+    system("./mcp_bridge.py &");
 }
 
 // ═══════════════════════  Loading & Initialization  ═══════════════════════
@@ -221,6 +231,9 @@ int main(int, char* []) {
     // Initialize REST server
     RestServer restServer;
     initREST(restServer, appConfig);
+
+    // Initialize MCP bridge
+    initMCP();
 
     // Initialize SDL and create window/renderer
     SDLResources resources = initSDL(appConfig, FULLSCREEN);

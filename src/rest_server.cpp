@@ -95,7 +95,7 @@ void RestServer::serverLoop() {
         FD_SET(m_serverSocket, &readSet);
         
         struct timeval timeout;
-        timeout.tv_sec = 1; // 1 second timeout
+        timeout.tv_sec = 10; // 10 seconds timeout
         timeout.tv_usec = 0;
         
         int selectResult = select(m_serverSocket + 1, &readSet, nullptr, nullptr, &timeout);
