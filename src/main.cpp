@@ -16,7 +16,6 @@
 #include "yahoo_finance.h"
 #include "draw.h"
 #include "ui.h"
-#include "render_chart.h"
 
 #include <curl/curl.h>
 

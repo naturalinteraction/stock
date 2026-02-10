@@ -1,4 +1,4 @@
-#include "render_chart.h"
+#include "chart.h"
 #include "draw.h"
 #include "ui.h"
 #include "viewmode_stats.h"
