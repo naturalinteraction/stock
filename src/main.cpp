@@ -1,7 +1,7 @@
 /*
- * StockChart - ETF Price Chart Viewer
+ * Stock - ETF Price Chart Viewer
  *
- * Usage: ./stockchart
+ * Usage: ./stock
  *
  * Dependencies: SDL2, SDL2_ttf, libcurl
  *   Ubuntu/Debian: sudo apt install libsdl2-dev libsdl2-ttf-dev libcurl4-openssl-dev
