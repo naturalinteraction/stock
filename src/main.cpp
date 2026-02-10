@@ -39,6 +39,116 @@ constexpr int FETCH_DATA_COUNT = 90;
 // --- Current ticker state ---
 static int g_currentTickerIndex = 0; // Index of the currently displayed ticker
 
+// ═══════════════════════  SDL Initialization & Cleanup  ═══════════════════════
+
+struct SDLResources {
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    TTF_Font* fontLarge;
+    TTF_Font* fontSmall;
+    WindowDimensions winDim;
+};
+
+SDLResources initSDL(const Config& appConfig, bool& fullscreen) {
+    // ── SDL init ──
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::cerr << "SDL_Init: " << SDL_GetError() << "\n";
+        return {nullptr, nullptr, nullptr, nullptr, {}};
+    }
+    if (TTF_Init() != 0) {
+        std::cerr << "TTF_Init: " << TTF_GetError() << "\n";
+        SDL_Quit();
+        return {nullptr, nullptr, nullptr, nullptr, {}};
+    }
+
+    std::string fontPath = findFont();
+    if (fontPath.empty()) {
+        std::cerr << "No TrueType font found. Install dejavu or liberation fonts.\n";
+        TTF_Quit();
+        SDL_Quit();
+        return {nullptr, nullptr, nullptr, nullptr, {}};
+    }
+
+    TTF_Font* font   = TTF_OpenFont(fontPath.c_str(), 18);
+    TTF_Font* fontSm = TTF_OpenFont(fontPath.c_str(), 13);
+    if (!font || !fontSm) {
+        std::cerr << "Failed to load font: " << TTF_GetError() << "\n";
+        if (font) TTF_CloseFont(font);
+        if (fontSm) TTF_CloseFont(fontSm);
+        TTF_Quit();
+        SDL_Quit();
+        return {nullptr, nullptr, nullptr, nullptr, {}};
+    }
+
+    Uint32 windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN; // Always start hidden and resizable
+
+    SDL_Window* win = SDL_CreateWindow(
+        ("Stock - " + appConfig.tickers[g_currentTickerIndex]).c_str(),
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        DEFAULT_GRAPH_WIDTH, DEFAULT_GRAPH_HEIGHT,
+        windowFlags);
+    if (!win) {
+        std::cerr << "SDL_CreateWindow: " << SDL_GetError() << "\n";
+        TTF_CloseFont(font);
+        TTF_CloseFont(fontSm);
+        TTF_Quit();
+        SDL_Quit();
+        return {nullptr, nullptr, nullptr, nullptr, {}};
+    }
+
+    // Set fullscreen mode explicitly if enabled in config
+    if (fullscreen) {
+        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
+    }
+    // Set minimum size unconditionally
+    SDL_SetWindowMinimumSize(win, MIN_GRAPH_WIDTH, MIN_GRAPH_HEIGHT);
+
+    // Get actual window size (may differ from initial size in fullscreen)
+    int winWidth, winHeight;
+    SDL_GetWindowSize(win, &winWidth, &winHeight);
+    WindowDimensions winDim = WindowDimensions::calculate(winWidth, winHeight);
+
+    SDL_Renderer* ren = SDL_CreateRenderer(win, -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!ren) {
+        std::cerr << "SDL_CreateRenderer: " << SDL_GetError() << "\n";
+        SDL_DestroyWindow(win);
+        TTF_CloseFont(font);
+        TTF_CloseFont(fontSm);
+        TTF_Quit();
+        SDL_Quit();
+        return {nullptr, nullptr, nullptr, nullptr, {}};
+    }
+
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+
+    // Show window after all setup and initial render is complete
+    SDL_ShowWindow(win);
+
+    // Apply fullscreen mode after showing the window if configured
+    if (fullscreen) {
+        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
+        // Update winDim after setting fullscreen to get actual dimensions
+        int newWidth, newHeight;
+        SDL_GetWindowSize(win, &newWidth, &newHeight);
+        winDim = WindowDimensions::calculate(newWidth, newHeight);
+    }
+
+    return {win, ren, font, fontSm, winDim};
+}
+
+void cleanup(SDLResources& resources, RestServer& restServer, Config& appConfig) {
+    restServer.stop();
+    SDL_DestroyRenderer(resources.renderer);
+    SDL_DestroyWindow(resources.window);
+    TTF_CloseFont(resources.fontSmall);
+    TTF_CloseFont(resources.fontLarge);
+    TTF_Quit();
+    SDL_Quit();
+    saveConfig(appConfig);
+    curl_global_cleanup();
+}
+
 // ═══════════════════════  main  ═══════════════════════
 
 int main(int, char* []) {
@@ -83,77 +193,18 @@ int main(int, char* []) {
     std::cout << "Loaded " << price_history.size() << " trading days  ("
               << price_history.front().date << "  ->  " << price_history.back().date << ")\n";
 
-    // ── SDL init ──
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        std::cerr << "SDL_Init: " << SDL_GetError() << "\n"; return 1;
-    }
-    if (TTF_Init() != 0) {
-        std::cerr << "TTF_Init: " << TTF_GetError() << "\n";
-        SDL_Quit(); return 1;
+    // Initialize SDL and create window/renderer
+    SDLResources resources = initSDL(appConfig, FULLSCREEN);
+    if (!resources.window || !resources.renderer) {
+        curl_global_cleanup();
+        return 1;
     }
 
-    std::string fontPath = findFont();
-    if (fontPath.empty()) {
-        std::cerr << "No TrueType font found. Install dejavu or liberation fonts.\n";
-        TTF_Quit(); SDL_Quit(); return 1;
-    }
-
-    TTF_Font* font   = TTF_OpenFont(fontPath.c_str(), 18);
-    TTF_Font* fontSm = TTF_OpenFont(fontPath.c_str(), 13);
-    if (!font || !fontSm) {
-        std::cerr << "Failed to load font: " << TTF_GetError() << "\n";
-        TTF_Quit(); SDL_Quit(); return 1;
-    }
-
-    Uint32 windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN; // Always start hidden and resizable
-
-    SDL_Window* win = SDL_CreateWindow(
-        ("Stock - " + appConfig.tickers[g_currentTickerIndex]).c_str(),
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        DEFAULT_GRAPH_WIDTH, DEFAULT_GRAPH_HEIGHT,
-        windowFlags);
-    if (!win) {
-        std::cerr << "SDL_CreateWindow: " << SDL_GetError() << "\n";
-        TTF_CloseFont(font); TTF_CloseFont(fontSm);
-        TTF_Quit(); SDL_Quit(); return 1;
-    }
-
-    // Set fullscreen mode explicitly if enabled in config
-    if (FULLSCREEN) {
-        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
-    }
-    // Set minimum size unconditionally
-    SDL_SetWindowMinimumSize(win, MIN_GRAPH_WIDTH, MIN_GRAPH_HEIGHT);
-
-    // Get actual window size (may differ from initial size in fullscreen)
-    int winWidth, winHeight;
-    SDL_GetWindowSize(win, &winWidth, &winHeight);
-    WindowDimensions winDim = WindowDimensions::calculate(winWidth, winHeight);
-
-    SDL_Renderer* ren = SDL_CreateRenderer(win, -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!ren) {
-        std::cerr << "SDL_CreateRenderer: " << SDL_GetError() << "\n";
-        SDL_DestroyWindow(win);
-        TTF_CloseFont(font); TTF_CloseFont(fontSm);
-        TTF_Quit(); SDL_Quit(); return 1;
-    }
-
-    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
-
-    // ── Initial render ──
-
-    // Show window after all setup and initial render is complete
-    SDL_ShowWindow(win);
-
-    // Apply fullscreen mode after showing the window if configured
-    if (FULLSCREEN) {
-        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN);
-        // Update winDim after setting fullscreen to get actual dimensions
-        int newWidth, newHeight;
-        SDL_GetWindowSize(win, &newWidth, &newHeight);
-        winDim = WindowDimensions::calculate(newWidth, newHeight);
-    }
+    SDL_Window* win = resources.window;
+    SDL_Renderer* ren = resources.renderer;
+    TTF_Font* font = resources.fontLarge;
+    TTF_Font* fontSm = resources.fontSmall;
+    WindowDimensions winDim = resources.winDim;
 
     // ── Event loop ──
     bool running = true;
@@ -388,14 +439,6 @@ int main(int, char* []) {
     }
 
     // ── Cleanup ──
-    restServer.stop();
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
-    TTF_CloseFont(fontSm);
-    TTF_CloseFont(font);
-    TTF_Quit();
-    SDL_Quit();
-    saveConfig(appConfig);
-    curl_global_cleanup();
+    cleanup(resources, restServer, appConfig);
     return 0;
 }
