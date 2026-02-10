@@ -4,6 +4,7 @@
 #include <sstream>
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 
 // Simple JSON helper functions for manual parsing/building
 static std::string jsonString(const std::string& s) {
@@ -115,14 +116,20 @@ void startMCPServer(MCPCommandQueue& cmdQueue) {
 
             std::string method = getJsonString(line, "method");
 
+            fprintf(stderr, "[MCP] Received method: \"%s\" (id=%d)\n", method.c_str(), id);
+
             if (method == "initialize") {
+                fprintf(stderr, "[MCP] -> Handling initialize\n");
                 sendInitializeResponse(id);
             }
             else if (method == "tools/list") {
+                fprintf(stderr, "[MCP] -> Handling tools/list\n");
                 sendToolsList(id);
             }
             else if (method == "tools/call") {
                 std::string toolName = getJsonString(line, "name");
+
+                fprintf(stderr, "[MCP] -> tools/call tool=\"%s\"\n", toolName.c_str());
 
                 if (toolName == "set_ticker") {
                     // Extract ticker and optional days from arguments

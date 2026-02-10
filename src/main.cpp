@@ -785,6 +785,8 @@ int main(int, char* []) {
         // ── Process MCP commands ──
         MCPCommand mcpCmd;
         while (g_mcpCommandQueue.tryPop(mcpCmd)) {
+            fprintf(stderr, "[MCP] Main loop received command: tool=\"%s\" ticker=\"%s\" days=%d\n",
+                    mcpCmd.tool.c_str(), mcpCmd.ticker.c_str(), mcpCmd.days);
             if (mcpCmd.tool == "set_ticker") {
                 // Find the ticker in the list
                 int newIndex = -1;
@@ -799,7 +801,7 @@ int main(int, char* []) {
                     g_currentTickerIndex = newIndex;
                     appConfig.lastActiveTickerIndex = g_currentTickerIndex;
                     saveConfig(appConfig);
-                    std::cout << "[MCP] Switching to ticker: " << appConfig.tickers[g_currentTickerIndex] << " ...\n";
+                    std::cerr << "[MCP] Switching to ticker: " << appConfig.tickers[g_currentTickerIndex] << " ...\n";
 
                     int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
                     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -809,7 +811,7 @@ int main(int, char* []) {
                         auto fresh = parseResponse(json, fetchDays);
                         if (!fresh.empty()) {
                             price_history = std::move(fresh);
-                            std::cout << "[MCP] Loaded " << price_history.size()
+                            std::cerr << "[MCP] Loaded " << price_history.size()
                                       << " trading days  ("
                                       << price_history.front().date << "  ->  "
                                       << price_history.back().date << ")\n";
