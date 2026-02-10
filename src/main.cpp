@@ -883,9 +883,9 @@ int main(int argc, char* argv[]) {
                 break; // End of SDLK_DOWN case
             case SDL_MOUSEWHEEL:
                 if (ev.wheel.y > 0) { // Scroll up
-                    appConfig.displayedDays = std::max(10, appConfig.displayedDays - DISPLAYED_DAYS_STEP);
+                    appConfig.displayedDays = std::max(10, appConfig.displayedDays - 1);
                 } else if (ev.wheel.y < 0) { // Scroll down
-                    appConfig.displayedDays = std::min(90, appConfig.displayedDays + DISPLAYED_DAYS_STEP);
+                    appConfig.displayedDays = std::min(90, appConfig.displayedDays + 1);
                 }
                 saveConfig(appConfig);
                 renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
