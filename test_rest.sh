@@ -1,5 +1,8 @@
 #!/bin/bash
 
+bin/stock &
+
+sleep 6
 # Test script for REST server functionality
 
 echo "=== Testing Stock Chart REST API ==="
