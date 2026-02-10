@@ -1,9 +1,7 @@
 /*
  * StockChart - ETF Price Chart Viewer
  *
- * Usage: ./stockchart [TICKER] [DAYS]
- *   TICKER  Yahoo Finance ticker symbol (default: VWCE.DE)
- *   DAYS    Number of trading days to display (default: 30)
+ * Usage: ./stockchart
  *
  * Dependencies: SDL2, SDL2_ttf, libcurl
  *   Ubuntu/Debian: sudo apt install libsdl2-dev libsdl2-ttf-dev libcurl4-openssl-dev
@@ -661,7 +659,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
 
 // ═══════════════════════  main  ═══════════════════════
 
-int main(int argc, char* argv[]) {
+int main(int, char* []) {
     Config appConfig = loadConfig();
     g_currentTickerIndex = appConfig.lastActiveTickerIndex;
     // Ensure g_currentTickerIndex is within valid bounds
@@ -669,15 +667,7 @@ int main(int argc, char* argv[]) {
         g_currentTickerIndex = 0;
     }
 
-    // Command line arguments override config
-    if (argc >= 2) {
-        appConfig.tickers[g_currentTickerIndex] = argv[1];
-        appConfig.lastActiveTickerIndex = 0; // Command line always sets the first ticker as active
-        saveConfig(appConfig);
-    }
-    if (argc >= 3) {
-        appConfig.displayedDays = std::stoi(argv[2]);
-    }
+
 
     ViewMode viewMode = appConfig.viewMode; // Declare and initialize viewMode here
     bool FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN as a local variable from config
