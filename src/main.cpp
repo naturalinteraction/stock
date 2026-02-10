@@ -12,6 +12,7 @@
 #include "viewmode_macross.h"
 #include "viewmode_stats.h"
 #include "config.h"
+#include "mcp_server.h"
 
 
 #include <curl/curl.h>
@@ -60,6 +61,9 @@ static int g_currentTickerIndex = 0; // Index of the currently displayed ticker
 // --- Ticker buttons state ---
 static SDL_Rect g_tickerButtons[6] = {}; // Rectangles for each ticker button
 static int g_tickerButtonCount = 0;      // Number of ticker buttons
+
+// --- MCP command queue ---
+static MCPCommandQueue g_mcpCommandQueue;
 
 // ═══════════════════════  Network  ═══════════════════════
 
@@ -756,6 +760,10 @@ int main(int, char* []) {
 
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 
+    // ── Start MCP server ──
+    startMCPServer(g_mcpCommandQueue);
+    std::cerr << "MCP server initialized\n";
+
     // ── Initial render ──
 
     // Show window after all setup and initial render is complete
@@ -774,6 +782,54 @@ int main(int, char* []) {
     bool running = true;
     bool mouseMoved = false; // Flag to track if mouse moved
     while (running) {
+        // ── Process MCP commands ──
+        MCPCommand mcpCmd;
+        while (g_mcpCommandQueue.tryPop(mcpCmd)) {
+            if (mcpCmd.tool == "set_ticker") {
+                // Find the ticker in the list
+                int newIndex = -1;
+                for (size_t i = 0; i < appConfig.tickers.size(); i++) {
+                    if (appConfig.tickers[i] == mcpCmd.ticker) {
+                        newIndex = i;
+                        break;
+                    }
+                }
+
+                if (newIndex >= 0 && newIndex != g_currentTickerIndex) {
+                    g_currentTickerIndex = newIndex;
+                    appConfig.lastActiveTickerIndex = g_currentTickerIndex;
+                    saveConfig(appConfig);
+                    std::cout << "[MCP] Switching to ticker: " << appConfig.tickers[g_currentTickerIndex] << " ...\n";
+
+                    int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
+                    curl_global_init(CURL_GLOBAL_DEFAULT);
+                    std::string json = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
+
+                    if (!json.empty()) {
+                        auto fresh = parseResponse(json, fetchDays);
+                        if (!fresh.empty()) {
+                            price_history = std::move(fresh);
+                            std::cout << "[MCP] Loaded " << price_history.size()
+                                      << " trading days  ("
+                                      << price_history.front().date << "  ->  "
+                                      << price_history.back().date << ")\n";
+                        } else {
+                            std::cerr << "[MCP] No trading data found for " << appConfig.tickers[g_currentTickerIndex] << "\n";
+                        }
+                    } else {
+                        std::cerr << "[MCP] Failed to fetch data for " << appConfig.tickers[g_currentTickerIndex] << ". Check network and ticker symbol.\n";
+                    }
+                    curl_global_cleanup();
+                } else if (newIndex < 0) {
+                    std::cerr << "[MCP] Ticker not found in configured list: " << mcpCmd.ticker << "\n";
+                }
+
+                // Trigger re-render
+                renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
+                SDL_RenderPresent(ren);
+            }
+        }
+
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) { // Process all events in the queue
             switch (ev.type) {
