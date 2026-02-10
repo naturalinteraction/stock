@@ -1,72 +1,152 @@
-# Stock - Price Chart Viewer
+# Stock - Interactive Price Chart Viewer
 
-For visualizing price charts, offering various analysis view modes.
+A C++ SDL2-based stock price chart viewer with multiple analysis view modes, REST API control, and interactive UI.
 
-## Usage
+## Quick Start
 
-To run the application, use the following command:
+**Build:** `make`
 
-```bash
-./bin/stock [TICKER] [DAYS]
+**Run:** `./bin/stock`
+
+The application will:
+- Load default tickers from config file
+- Start REST API on port 8080
+- Display interactive chart window
+
+## Usage & Controls
+
+### Interactive Controls
+- **TAB**: Cycle through view modes
+- **SPACE**: Switch between configured tickers
+- **F**: Toggle fullscreen mode
+- **R**: Reload current ticker data
+- **↑/↓ Arrow Keys**: Zoom in/out (adjust displayed days)
+- **Mouse Wheel**: Zoom in/out (1 day increments)
+- **ESC**: Exit application
+
+### Mouse Interaction
+- **Click View Mode Tabs**: Select specific analysis mode
+- **Click Ticker Buttons**: Switch directly to a ticker
+- **Mouse Hover**: Display price/date information on chart
+- **Window Resizing**: Chart scales automatically
+
+## Configuration
+
+The application uses `data/config.json` for persistent settings:
+
+```json
+{
+    "view_mode": "PriceChart",
+    "fullscreen": false,
+    "tickers": ["VWCE.DE", "VHYL.AS", "WS5X.MI", "BTC-USD", "USDEUR=X", "EURUSD=X"],
+    "displayed_days": 10,
+    "last_active_ticker_index": 0
+}
 ```
 
--   `TICKER`: Yahoo Finance ticker symbol (e.g., `VWCE.DE`, `^GSPC`). Defaults to `VWCE.DE`.
--   `DAYS`: Number of trading days to display (e.g., `50`). Defaults to `30`.
+Default tickers are automatically created on first run.
 
-**Example:**
+## View Modes
+
+*   **PriceChart**: Basic price chart with candlesticks and lines
+*   **PriceChartStats**: Price chart with statistical overlays
+*   **Bollinger**: Bollinger Bands for volatility analysis
+*   **MACross**: Moving Average Crossover indicators for trend identification
+
+## REST API
+
+The application exposes a REST API on `http://localhost:8080`:
+
+### Endpoints
+
+**GET /** 
+Returns API information
+
+**GET /tickers**
+Returns list of available tickers
+
+**POST /set-ticker**
+Change the current ticker:
 ```bash
-./bin/stock AAPL 90
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"ticker":"AAPL"}' \
+     http://localhost:8080/set-ticker
 ```
+
+### MCP Integration
+
+The application includes an MCP (Model Context Protocol) bridge at `mcp_bridge.py` for integration with AI assistants. Configure it with `.mcp.json`.
 
 ## Building from Source
 
 ### Prerequisites
 
-To build StockChart, you need the following:
--   A C++17 compatible compiler (e.g., `g++`)
--   `SDL2` development libraries
--   `SDL2_ttf` development libraries
--   `libcurl` development libraries
+-   C++17 compatible compiler (g++)
+-   SDL2 development libraries
+-   SDL2_ttf development libraries  
+-   libcurl development libraries
 
-**For Ubuntu/Debian based systems, you can install dependencies using:**
+**Ubuntu/Debian:**
 ```bash
 sudo apt install build-essential libsdl2-dev libsdl2-ttf-dev libcurl4-openssl-dev
 ```
 
 ### Build Commands
 
-Navigate to the project root directory and run `make`:
 ```bash
-make
+make          # Build the application
+make clean    # Clean build artifacts
 ```
-This will compile the application and create the executable `bin/stock`.
 
-## View Modes
+The executable will be created at `bin/stock`.
 
-StockChart supports different viewing modes to analyze price data. You can cycle through these modes by pressing the `TAB` key while the application is running.
+## Architecture
 
-Here is a list of available view modes:
+**Core Components:**
+- `src/main.cpp` - Application entry point and event loop
+- `src/chart.h` - Data structures and layout constants
+- `src/viewmode_*.cpp` - Individual view mode implementations
+- `src/config.cpp` - Configuration management
+- `src/rest_server.cpp` - HTTP API server
 
-*   **PriceChart**: The basic price chart displaying candlesticks/lines.
-*   **PriceChartStats**: Overlays statistical information on the price chart.
-*   **Bollinger**: Displays Bollinger Bands, showing market volatility and potential overbought/oversold conditions.
-*   **MACross**: Shows Moving Average Crossover indicators (e.g., for trend identification).
-*   **PriceAction**: Visualizes price action elements such as Support and Resistance levels (based on swing highs and lows).
-*   *(Future View Mode)*: Description of a future view mode.
+**Data Flow:**
+1. Configuration loaded from JSON file
+2. Historical data fetched from Yahoo Finance via libcurl
+3. REST server starts on port 8080 for external control
+4. Interactive SDL2 window displays charts with user controls
 
-## Contributing / Extending
+## Testing REST API
 
-This project is designed to be extensible with new view modes. To add a new view mode:
+Use the provided test script:
+```bash
+./test_rest.sh
+```
 
-1.  **Create Files**: Create two new files, `viewmode_YOURNAME.h` and `viewmode_YOURNAME.cpp`, in the `src/` directory.
-2.  **Define Overlay Function**: In `viewmode_YOURNAME.h`, declare a function `void renderYOURNAMEOffset(SDL_Renderer* ren, TTF_Font* fontSm, const std::vector<PricePoint>& price_history, const ChartRegion& cr);` (or similar signature as existing view modes).
-3.  **Implement Logic**: In `viewmode_YOURNAME.cpp`, implement the rendering logic for your new view mode.
-4.  **Update `src/chart.h`**: Add `YOURNAME` to the `enum class ViewMode` and increment `VIEW_MODE_COUNT`.
-5.  **Update `src/main.cpp`**:
-    *   Include `viewmode_YOURNAME.h`.
-    *   Add an `else if (viewMode == ViewMode::YOURNAME)` block in `renderChart` to call your new overlay function.
-    *   Add a case for your new view mode to the `switch` statement that generates the title, providing a descriptive name.
-6.  **Update `Makefile`**: Add `src/viewmode_YOURNAME.cpp` to the `SRC` variable.
-7.  **Recompile**: Run `make` to recompile the project.
+This will test all REST endpoints while the application is running.
 
-Remember to follow the existing coding style and structure.
+## Contributing
+
+### Adding a New View Mode
+
+1. Create `src/viewmode_YOURNAME.h` with function declaration:
+   ```cpp
+   void renderYOURNAMEOffset(SDL_Renderer* ren, TTF_Font* fontSm, 
+                             const std::vector<PricePoint>& price_history, 
+                             const ChartRegion& cr);
+   ```
+
+2. Create `src/viewmode_YOURNAME.cpp` with implementation
+
+3. Add `YOURNAME` to `enum class ViewMode` in `src/chart.h` (before `_COUNT`)
+
+4. Include header in `src/main.cpp`
+
+5. Add `else if (viewMode == ViewMode::YOURNAME)` block in `renderChart()`
+
+6. Add case in view mode title generation switch statement
+
+7. Add `src/viewmode_YOURNAME.cpp` to `SRC` variable in Makefile
+
+8. Run `make` to recompile
+
+The application maintains backward compatibility and follows existing coding patterns.
