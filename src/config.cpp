@@ -181,7 +181,8 @@ Config loadConfig(const std::string& filename) {
 
 void saveConfig(const Config& config, const std::string& filename) {
     // Ensure the data directory exists
-    system("mkdir -p data");
+    int ret = system("mkdir -p data");
+    ret = ret;  // to avoid warning unused variable
 
     std::ofstream ofs(filename);
     if (!ofs.is_open()) {
