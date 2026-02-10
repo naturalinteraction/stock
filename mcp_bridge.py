@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MCP bridge for stock chart viewer.
+"""MCP bridge for stock viewer.
 
 Exposes a set-ticker tool over MCP (JSON-RPC over stdio) that forwards
 requests to the already-running bin/stock REST server at localhost:8080.
@@ -79,7 +79,7 @@ def handle_tools_list(req):
                 },
                 {
                     "name": "get-tickers",
-                    "description": "List available/known tickers from the stock chart viewer.",
+                    "description": "List available/known tickers from the stock viewer.",
                     "inputSchema": {"type": "object", "properties": {}},
                 },
             ]
