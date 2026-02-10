@@ -16,7 +16,7 @@ echo "2. Getting API info..."
 curl -s http://localhost:8080/ || echo "Failed to connect to REST server"
 echo
 echo
-sleep 5
+sleep 2
 
 # Test 3: Set ticker (this requires the application to be running)
 echo "3. Setting ticker to VWCE.DE..."
@@ -30,7 +30,7 @@ echo "3. Setting ticker to VHYL.AS..."
 curl -s -X POST -H "Content-Type: application/json" -d '{"ticker":"VHYL.AS"}' http://localhost:8080/set-ticker || echo "Failed to connect to REST server"
 echo
 echo
-sleep 5
+sleep 1
 
 # Test 4: Try to set invalid ticker
 echo "4. Trying invalid ticker..."

@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <SDL2/SDL.h>
 
 RestServer::RestServer() 
     : m_running(false), m_newTickerRequest(false), m_serverSocket(-1), m_port(8080) {
@@ -184,7 +185,12 @@ void RestServer::handleRequest(int clientSocket, const std::string& method, cons
                     m_requestedTicker = ticker;
                     m_newTickerRequest.store(true);
                 }
-                
+
+                // Push an SDL event to wake the main loop from SDL_WaitEvent
+                SDL_Event wakeEvent;
+                wakeEvent.type = SDL_USEREVENT;
+                SDL_PushEvent(&wakeEvent);
+
                 responseBody = "{\"status\":\"success\",\"ticker\":\"" + ticker + "\"}";
             }
         }
