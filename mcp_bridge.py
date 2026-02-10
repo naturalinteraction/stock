@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """MCP bridge for stock viewer.
 
-Exposes a set-ticker tool over MCP (JSON-RPC over stdio) that forwards
+Exposes a set-ticker tool over MCP (JSON-RPC over TCP/IP) that forwards
 requests to the already-running bin/stock REST server at localhost:8080.
 """
 
 import json
-import sys
+import socket
 import urllib.request
 import urllib.error
 
 REST_BASE = "http://localhost:8080"
+MCP_PORT = 8081
 
 
-def send(msg):
+def send(sock, msg):
     out = json.dumps(msg)
-    sys.stdout.write(out + "\n")
-    sys.stdout.flush()
+    sock.send((out + "\n").encode())
 
 
 def rest_post(path, body):
@@ -45,8 +45,8 @@ def rest_get(path):
         return {"error": str(e)}
 
 
-def handle_initialize(req):
-    send({
+def handle_initialize(req, sock):
+    send(sock, {
         "jsonrpc": "2.0",
         "id": req["id"],
         "result": {
@@ -57,8 +57,8 @@ def handle_initialize(req):
     })
 
 
-def handle_tools_list(req):
-    send({
+def handle_tools_list(req, sock):
+    send(sock, {
         "jsonrpc": "2.0",
         "id": req["id"],
         "result": {
@@ -87,7 +87,7 @@ def handle_tools_list(req):
     })
 
 
-def handle_tools_call(req):
+def handle_tools_call(req, sock):
     name = req["params"]["name"]
     args = req["params"].get("arguments", {})
 
@@ -114,7 +114,7 @@ def handle_tools_call(req):
     else:
         text = f"Unknown tool: {name}"
 
-    send({
+    send(sock, {
         "jsonrpc": "2.0",
         "id": req["id"],
         "result": {
@@ -124,33 +124,60 @@ def handle_tools_call(req):
 
 
 def main():
-    print('MCP bridge running...')
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(('127.0.0.1', MCP_PORT))
+    server_socket.listen(1)
+    print(f'MCP bridge listening on port {MCP_PORT}...')
+
     handlers = {
         "initialize": handle_initialize,
-        "notifications/initialized": lambda req: None,
+        "notifications/initialized": lambda req, sock: None,
         "tools/list": handle_tools_list,
         "tools/call": handle_tools_call,
     }
 
-    for line in sys.stdin:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            req = json.loads(line)
-        except json.JSONDecodeError:
-            continue
+    try:
+        while True:
+            conn, addr = server_socket.accept()
+            print(f'Client connected from {addr}')
+            buffer = ""
 
-        method = req.get("method", "")
-        handler = handlers.get(method)
-        if handler:
-            handler(req)
-        elif "id" in req:
-            send({
-                "jsonrpc": "2.0",
-                "id": req["id"],
-                "error": {"code": -32601, "message": f"Method not found: {method}"},
-            })
+            try:
+                while True:
+                    data = conn.recv(4096).decode()
+                    if not data:
+                        break
+
+                    buffer += data
+                    lines = buffer.split('\n')
+                    buffer = lines[-1]  # Keep incomplete line in buffer
+
+                    for line in lines[:-1]:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            req = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+
+                        method = req.get("method", "")
+                        handler = handlers.get(method)
+                        if handler:
+                            handler(req, conn)
+                        elif "id" in req:
+                            send(conn, {
+                                "jsonrpc": "2.0",
+                                "id": req["id"],
+                                "error": {"code": -32601, "message": f"Method not found: {method}"},
+                            })
+            finally:
+                conn.close()
+    except KeyboardInterrupt:
+        print('Shutting down...')
+    finally:
+        server_socket.close()
 
 
 if __name__ == "__main__":
