@@ -1,12 +1,9 @@
 {
   "mcpServers": {
     "stock": {
-      "command": "python",
-      "args": ["mcp_bridge_tcp.py"],
-      "type": "tcp",
-      "host": "127.0.0.1",
-      "port": 8081,
-      "env": {}
+      "command": "python3",
+      "args": ["mcp_bridge.py"],
+      "cwd": "/home/av/src/stock"
     }
   }
 }

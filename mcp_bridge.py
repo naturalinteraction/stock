@@ -27,7 +27,7 @@ def rest_post(path, body):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.URLError as e:
         return {"error": f"Cannot reach stock server: {e.reason}"}
@@ -37,7 +37,7 @@ def rest_post(path, body):
 
 def rest_get(path):
     try:
-        with urllib.request.urlopen(f"{REST_BASE}{path}", timeout=5) as resp:
+        with urllib.request.urlopen(f"{REST_BASE}{path}", timeout=15) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.URLError as e:
         return {"error": f"Cannot reach stock server: {e.reason}"}
@@ -124,7 +124,7 @@ def handle_tools_call(req):
 
 
 def main():
-    print('MCP bridge running...')
+    print('MCP bridge running...', file=sys.stderr)
     handlers = {
         "initialize": handle_initialize,
         "notifications/initialized": lambda req: None,
