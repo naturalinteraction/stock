@@ -6,6 +6,16 @@
 #include <vector>
 #include <algorithm>
 
+// Default ticker configuration
+static const std::vector<std::string> DEFAULT_TICKERS = {
+    "VWCE.DE",
+    "VHYL.AS", 
+    "WS5X.MI",
+    "BTC-USD",
+    "USDEUR=X",
+    "EURUSD=X"
+};
+
 // Mapping enum to string
 static std::map<ViewMode, std::string> viewModeToString = {
     {ViewMode::PriceChart, "PriceChart"},
@@ -28,12 +38,7 @@ Config loadConfig(const std::string& filename) {
     std::ifstream ifs(filename);
     if (!ifs.is_open()) {
         std::cerr << "Config file " << filename << " not found. Creating default.\n";
-        config.tickers.push_back("VWCE.DE");
-        config.tickers.push_back("VHYL.AS");
-        config.tickers.push_back("VWCE.MI");
-        config.tickers.push_back("WS5X.MI");
-        config.tickers.push_back("USDEUR=X");
-        config.tickers.push_back("EURUSD=X");
+        config.tickers = DEFAULT_TICKERS;
         saveConfig(config, filename); // Save default config
         return config;
     }
@@ -108,14 +113,9 @@ Config loadConfig(const std::string& filename) {
             ticker_val.erase(ticker_val.find_last_not_of(" \t\"\n") + 1);
             config.tickers.push_back(ticker_val);
 
-            // Determine the filler ticker: first parsed ticker, or use the hardcoded defaults
+            // Determine the filler ticker: first parsed ticker, or use the default tickers
             if (config.tickers.empty()) {
-                config.tickers.push_back("VWCE.DE");
-                config.tickers.push_back("VHYL.AS");
-                config.tickers.push_back("VWCE.MI");
-                config.tickers.push_back("WS5X.MI");
-                config.tickers.push_back("USDEUR=X");
-                config.tickers.push_back("EURUSD=X");
+                config.tickers = DEFAULT_TICKERS;
             }
 
             // If less than 6 tickers are provided, fill with first parsed ticker (if available)
