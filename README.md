@@ -8,6 +8,12 @@ A C++ SDL2-based stock price chart viewer with multiple analysis view modes, RES
 
 **Run:** `./bin/stock`
 
+**Build And Run:** `./r.sh`
+
+**Test REST Only:** `./test_rest.sh` (it will launch `bin/stock`)
+
+**Test MCP:** `./r.sh`, then start `./mcp_bridge.py`, then `show VHYL.AS` in Claude Code
+
 The application will:
 - Load default tickers from config file
 - Start REST API on port 8080
