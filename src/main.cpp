@@ -149,6 +149,11 @@ void cleanup(SDLResources& resources, RestServer& restServer, Config& appConfig)
     curl_global_cleanup();
 }
 
+void initREST(RestServer& restServer, const Config& appConfig) {
+    restServer.setAvailableTickers(appConfig.tickers);
+    restServer.start(8080);
+}
+
 // ═══════════════════════  main  ═══════════════════════
 
 int main(int, char* []) {
@@ -187,8 +192,7 @@ int main(int, char* []) {
 
     // Initialize REST server
     RestServer restServer;
-    restServer.setAvailableTickers(appConfig.tickers);
-    restServer.start(8080);
+    initREST(restServer, appConfig);
 
     // Initialize SDL and create window/renderer
     SDLResources resources = initSDL(appConfig, FULLSCREEN);
