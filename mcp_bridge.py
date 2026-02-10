@@ -124,6 +124,7 @@ def handle_tools_call(req):
 
 
 def main():
+    print('MCP bridge running...')
     handlers = {
         "initialize": handle_initialize,
         "notifications/initialized": lambda req: None,
