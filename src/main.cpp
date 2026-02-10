@@ -159,16 +159,8 @@ int main(int, char* []) {
         g_currentTickerIndex = 0;
     }
 
-    // Initialize REST server
-    RestServer restServer;
-    restServer.setAvailableTickers(appConfig.tickers);
-    restServer.start(8080);
-
     ViewMode viewMode = appConfig.viewMode; // Declare and initialize viewMode here
     bool FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN as a local variable from config
-
-
-
 
     int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
     std::cout << "Fetching " << FETCH_DATA_COUNT << " trading days for " << appConfig.tickers[g_currentTickerIndex]
@@ -192,6 +184,11 @@ int main(int, char* []) {
 
     std::cout << "Loaded " << price_history.size() << " trading days  ("
               << price_history.front().date << "  ->  " << price_history.back().date << ")\n";
+
+    // Initialize REST server
+    RestServer restServer;
+    restServer.setAvailableTickers(appConfig.tickers);
+    restServer.start(8080);
 
     // Initialize SDL and create window/renderer
     SDLResources resources = initSDL(appConfig, FULLSCREEN);
