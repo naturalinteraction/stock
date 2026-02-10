@@ -12,7 +12,10 @@
 #include "viewmode_macross.h"
 #include "viewmode_stats.h"
 #include "config.h"
+<<<<<<< HEAD
 #include "mcp_server.h"
+#include "rest_server.h"
+>>>>>>> master
 
 
 #include <curl/curl.h>
@@ -671,7 +674,10 @@ int main(int, char* []) {
         g_currentTickerIndex = 0;
     }
 
-
+    // Initialize REST server
+    RestServer restServer;
+    restServer.setAvailableTickers(appConfig.tickers);
+    restServer.start(8080);
 
     ViewMode viewMode = appConfig.viewMode; // Declare and initialize viewMode here
     bool FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN as a local variable from config
@@ -782,6 +788,7 @@ int main(int, char* []) {
     bool running = true;
     bool mouseMoved = false; // Flag to track if mouse moved
     while (running) {
+<<<<<<< HEAD
         // ── Process MCP commands ──
         MCPCommand mcpCmd;
         while (g_mcpCommandQueue.tryPop(mcpCmd)) {
@@ -804,7 +811,6 @@ int main(int, char* []) {
                     std::cerr << "[MCP] Switching to ticker: " << appConfig.tickers[g_currentTickerIndex] << " ...\n";
 
                     int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
-                    curl_global_init(CURL_GLOBAL_DEFAULT);
                     std::string json = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
 
                     if (!json.empty()) {
@@ -821,17 +827,59 @@ int main(int, char* []) {
                     } else {
                         std::cerr << "[MCP] Failed to fetch data for " << appConfig.tickers[g_currentTickerIndex] << ". Check network and ticker symbol.\n";
                     }
-                    curl_global_cleanup();
                 } else if (newIndex < 0) {
                     std::cerr << "[MCP] Ticker not found in configured list: " << mcpCmd.ticker << "\n";
                 }
-
                 // Trigger re-render
                 renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
                 SDL_RenderPresent(ren);
             }
         }
+        // Check for REST server ticker updates
+        if (restServer.hasNewTickerRequest()) {
+            std::string newTicker = restServer.getRequestedTicker();
+            restServer.clearTickerRequest();
+            
+            // Find ticker index
+            auto it = std::find(appConfig.tickers.begin(), appConfig.tickers.end(), newTicker);
+            if (it != appConfig.tickers.end()) {
+                g_currentTickerIndex = static_cast<int>(std::distance(appConfig.tickers.begin(), it));
+                appConfig.lastActiveTickerIndex = g_currentTickerIndex;
+                saveConfig(appConfig);
+                
+                std::cout << "REST API: Switching to ticker: " << appConfig.tickers[g_currentTickerIndex] << " ...\n";
+                
+                // Fetch new data
+                int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
+                std::string json = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
+                
+                if (!json.empty()) {
+                    auto fresh = parseResponse(json, fetchDays);
+                    if (!fresh.empty()) {
+                        price_history = std::move(fresh);
+                        std::cout << "Loaded " << price_history.size()
+                                  << " trading days  ("
+                                  << price_history.front().date << "  ->  "
+                                  << price_history.back().date << ")\n";
+                    } else {
+                        std::cerr << "No trading data found for " << appConfig.tickers[g_currentTickerIndex] << "\n";
+                    }
+                } else {
+                    std::cerr << "Failed to fetch data for " << appConfig.tickers[g_currentTickerIndex] << ". Check network and ticker symbol.\n";
+                }
+                
+                // Update window title
+                SDL_SetWindowTitle(win, ("StockChart - " + appConfig.tickers[g_currentTickerIndex]).c_str());
+                
+                // Render immediately
+                renderChart(ren, font, fontSm, price_history, appConfig.tickers, g_currentTickerIndex, viewMode, appConfig.displayedDays, winDim);
+                SDL_RenderPresent(ren);
+            }
+        }
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) { // Process all events in the queue
             switch (ev.type) {
@@ -1019,6 +1067,7 @@ int main(int, char* []) {
     }
 
     // ── Cleanup ──
+    restServer.stop();
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
     TTF_CloseFont(fontSm);
