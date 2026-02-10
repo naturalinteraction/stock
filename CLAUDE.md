@@ -10,7 +10,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Run:** `./bin/stock`
 - Loads last active ticker from config.json, or defaults to VWCE.DE
-- Default display: 30 days of data
 
 **Keyboard controls:**
 - **TAB** - Cycle through view modes (Candlestick, Bollinger Bands, MA Cross, Stats)
