@@ -154,41 +154,70 @@ void initREST(RestServer& restServer, const Config& appConfig) {
     restServer.start(8080);
 }
 
-// ═══════════════════════  main  ═══════════════════════
+// ═══════════════════════  Loading & Initialization  ═══════════════════════
 
-int main(int, char* []) {
-    Config appConfig = loadConfig();
-    g_currentTickerIndex = appConfig.lastActiveTickerIndex;
+struct LoadedData {
+    Config config;
+    ViewMode viewMode;
+    bool fullscreen;
+    std::vector<PricePoint> price_history;
+};
+
+LoadedData load() {
+    LoadedData data{};
+
+    // Load configuration
+    data.config = loadConfig();
+    g_currentTickerIndex = data.config.lastActiveTickerIndex;
     // Ensure g_currentTickerIndex is within valid bounds
-    if (static_cast<size_t>(g_currentTickerIndex) >= appConfig.tickers.size()) {
+    if (static_cast<size_t>(g_currentTickerIndex) >= data.config.tickers.size()) {
         g_currentTickerIndex = 0;
     }
 
-    ViewMode viewMode = appConfig.viewMode; // Declare and initialize viewMode here
-    bool FULLSCREEN = appConfig.fullscreen; // Initialize FULLSCREEN as a local variable from config
+    data.viewMode = data.config.viewMode;
+    data.fullscreen = data.config.fullscreen;
 
+    // Fetch price data
     int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
-    std::cout << "Fetching " << FETCH_DATA_COUNT << " trading days for " << appConfig.tickers[g_currentTickerIndex]
+    std::cout << "Fetching " << FETCH_DATA_COUNT << " trading days for " << data.config.tickers[g_currentTickerIndex]
               << " (+" << LOOKBACK_DAYS << " lookback) ...\n";
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    std::string json = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
+    std::string json = fetchJSON(data.config.tickers[g_currentTickerIndex], fetchDays);
 
     if (json.empty()) {
         curl_global_cleanup();
         std::cerr << "Failed to fetch data. Check network and ticker symbol.\n";
-        return 1;
+        return data;
     }
 
     auto price_history = parseResponse(json, fetchDays);
     if (price_history.empty()) {
-        std::cerr << "No trading data found for " << appConfig.tickers[g_currentTickerIndex] << "\n";
+        std::cerr << "No trading data found for " << data.config.tickers[g_currentTickerIndex] << "\n";
         curl_global_cleanup();
-        return 1;
+        return data;
     }
 
     std::cout << "Loaded " << price_history.size() << " trading days  ("
               << price_history.front().date << "  ->  " << price_history.back().date << ")\n";
+
+    data.price_history = std::move(price_history);
+    return data;
+}
+
+// ═══════════════════════  main  ═══════════════════════
+
+int main(int, char* []) {
+    // Load configuration and price data
+    LoadedData data = load();
+    if (data.price_history.empty()) {
+        return 1;
+    }
+
+    Config& appConfig = data.config;
+    ViewMode viewMode = data.viewMode;
+    bool FULLSCREEN = data.fullscreen;
+    auto& price_history = data.price_history;
 
     // Initialize REST server
     RestServer restServer;
@@ -304,6 +333,7 @@ int main(int, char* []) {
                 }
                 else if (ev.key.keysym.sym == SDLK_r) {
                     std::cout << "Reloading " << appConfig.tickers[0] << " ...\n";
+                    int fetchDays = FETCH_DATA_COUNT + LOOKBACK_DAYS;
                     std::string rj = fetchJSON(appConfig.tickers[g_currentTickerIndex], fetchDays);
                     if (!rj.empty()) {
                         auto fresh = parseResponse(rj, fetchDays);
