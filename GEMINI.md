@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project is a C++ application designed for visualizing stock price charts. It offers various analysis view modes, such as PriceChart, PriceChartStats, Bollinger Bands, Moving Average Crossover (MACross), and Price Action (Support/Resistance levels). The application is built using C++ and relies on SDL2 for graphics, SDL2_ttf for text rendering, and libcurl for fetching data.
+This project is a C++ application designed for visualizing stock price charts. It offers various analysis view modes, such as PriceChart, PriceChartStats, Bollinger Bands, Moving Average Crossover (MACross), and Price Action (Support/Resistance levels). The application is built using C++ and relies on SDL2 for graphics, SDL2_ttf for text rendering, `libcurl` for fetching stock data from Yahoo Finance, and a `rest_server` for providing a REST API to control the application (e.g., changing the displayed ticker).
 
 ## Building and Running
 
@@ -49,6 +49,13 @@ To run the application, use the following command structure:
 ```
 
 While the application is running, you can cycle through different view modes by pressing the `TAB` key.
+
+
+## Project Structure
+
+*   `src/config.h` / `src/config.cpp`: These files manage the application's configuration, including settings like the last active ticker, current view mode, fullscreen status, and the number of displayed trading days.
+*   `src/rest_server.h` / `src/rest_server.cpp`: These files implement a RESTful API server that allows external control over the application, such as dynamically changing the displayed stock ticker.
+*   `TODO.md`: This file contains a list of pending tasks and future development ideas for the project.
 
 ## Development Conventions
 
