@@ -97,9 +97,7 @@ namespace ChartColors {
     static constexpr RGBA LABEL_BG    = {0, 0, 0, 30};         // Hover label background
 }
 
-// ─── Font and rendering functions ───
-std::string findFont();
-
+// ─── Chart rendering functions ───
 void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
                  const std::vector<PricePoint>& price_history,
                  const std::vector<std::string>& tickers, int currentTickerIndex,

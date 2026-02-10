@@ -1,9 +1,29 @@
 #include "draw.h"
 
 #include <cmath>
+#include <cstdio>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+
+std::string findFont() {
+    static const char* paths[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/google-noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/noto/NotoSans-Regular.ttf",
+    };
+    for (auto* p : paths) {
+        if (FILE* f = fopen(p, "r")) { fclose(f); return p; }
+    }
+    return {};
+}
 
 double niceStep(double range, int target) {
     if (range <= 0) return 1.0;

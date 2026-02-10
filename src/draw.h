@@ -5,6 +5,9 @@
 #include <SDL2/SDL_ttf.h>
 #include <string>
 
+// Find a TrueType font file on the system
+std::string findFont();
+
 // Calculate nice step size for grid intervals
 double niceStep(double range, int target);
 
