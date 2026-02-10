@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "stock": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/av/src/stock/mcp_bridge.py"
+      ],
+      "env": {}
+    }
+  }
+}
