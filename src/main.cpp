@@ -15,6 +15,7 @@
 #include "rest_server.h"
 #include "yahoo_finance.h"
 #include "draw.h"
+#include "ui.h"
 
 #include <curl/curl.h>
 
@@ -45,23 +46,8 @@ static constexpr RGBA COL_TITLE = {240, 240, 255, 255};
 static constexpr RGBA COL_DOT   = {  0, 255, 140, 255};
 static constexpr RGBA COL_HOVER_LABEL = {255, 255, 255, 255}; // White for hover label
 static constexpr RGBA COL_LABEL_BG    = {0, 0, 0, 30}; // Semi-transparent dark background (alpha 90 out of 255)
-static constexpr RGBA COL_VIEWMODE_BG = {35, 35, 50, 255};      // Inactive tab (dark gray)
-static constexpr RGBA COL_VIEWMODE_ACTIVE = {130, 130, 150, 255}; // Active tab (light gray)
-static constexpr RGBA COL_VIEWMODE_TEXT = {180, 180, 200, 255}; // Text inside rectangles
-
-// --- Mouse hover state ---
-static int g_mouseX = 0;
-static int g_mouseY = 0;
-static bool g_mouseInChartArea = false;
-
-// --- View mode tabs state ---
-static SDL_Rect g_viewModeTabs[4] = {}; // Rectangles for each tab
-static int g_viewModeTabCount = 0;      // Number of tabs
+// --- Current ticker state ---
 static int g_currentTickerIndex = 0; // Index of the currently displayed ticker
-
-// --- Ticker buttons state ---
-static SDL_Rect g_tickerButtons[6] = {}; // Rectangles for each ticker button
-static int g_tickerButtonCount = 0;      // Number of ticker buttons
 
 // ═══════════════════════  Font discovery  ═══════════════════════
 
@@ -85,132 +71,6 @@ static std::string findFont() {
 }
 
 // ═══════════════════════  Chart renderer  ═══════════════════════
-
-static std::string getViewModeName(ViewMode mode) {
-    switch (mode) {
-        case ViewMode::PriceChart:      return "Price";
-        case ViewMode::PriceChartStats: return "Stats";
-        case ViewMode::Bollinger:       return "Bollinger";
-        case ViewMode::MACross:         return "MACross";
-        default:                        return "Unknown";
-    }
-}
-
-// Check if mouse click is within any view mode tab and return the mode
-static bool getClickedViewMode(int mouseX, int mouseY, ViewMode& outMode) {
-    for (int i = 0; i < g_viewModeTabCount; i++) {
-        const SDL_Rect& tab = g_viewModeTabs[i];
-        if (mouseX >= tab.x && mouseX < tab.x + tab.w &&
-            mouseY >= tab.y && mouseY < tab.y + tab.h) {
-            outMode = static_cast<ViewMode>(i);
-            return true;
-        }
-    }
-    return false;
-}
-
-// Check if mouse click is within any ticker button and return the ticker index
-static bool getClickedTicker(int mouseX, int mouseY, int& outTickerIndex) {
-    for (int i = 0; i < g_tickerButtonCount; i++) {
-        const SDL_Rect& button = g_tickerButtons[i];
-        if (mouseX >= button.x && mouseX < button.x + button.w &&
-            mouseY >= button.y && mouseY < button.y + button.h) {
-            outTickerIndex = i;
-            return true;
-        }
-    }
-    return false;
-}
-
-static int renderViewModeBar(SDL_Renderer* ren, TTF_Font* font, ViewMode currentMode,
-                             int topY, int leftMargin) {
-    const int rectHeight = 30;
-    const int rectSpacing = 10;
-    const int rectPadding = 12;
-
-    int currentX = leftMargin;
-    g_viewModeTabCount = VIEW_MODE_COUNT;
-
-    // Draw each rectangle
-    for (int i = 0; i < VIEW_MODE_COUNT; i++) {
-        ViewMode mode = static_cast<ViewMode>(i);
-        std::string name = getViewModeName(mode);
-
-        int textW, textH;
-        TTF_SizeText(font, name.c_str(), &textW, &textH);
-
-        int rectW = textW + 2 * rectPadding;
-        SDL_Rect rect = {currentX, topY, rectW, rectHeight};
-
-        // Store tab rectangle for click detection
-        g_viewModeTabs[i] = rect;
-
-        // Draw filled rectangle
-        if (mode == currentMode) {
-            // Active view mode - filled with highlight color
-            SDL_SetRenderDrawColor(ren, COL_VIEWMODE_ACTIVE.r, COL_VIEWMODE_ACTIVE.g,
-                                   COL_VIEWMODE_ACTIVE.b, COL_VIEWMODE_ACTIVE.a);
-        } else {
-            // Inactive view mode - filled with background color
-            SDL_SetRenderDrawColor(ren, COL_VIEWMODE_BG.r, COL_VIEWMODE_BG.g,
-                                   COL_VIEWMODE_BG.b, COL_VIEWMODE_BG.a);
-        }
-        SDL_RenderFillRect(ren, &rect);
-
-        // Draw text centered in rectangle
-        RGBA textColor = (mode == currentMode) ? COL_BG : COL_VIEWMODE_TEXT;
-        drawText(ren, font, name, currentX + rectW / 2, topY + rectHeight / 2,
-                 textColor, 1, 1);
-
-        currentX += rectW + rectSpacing;
-    }
-
-    // Return the right edge position (rightmost x + spacing)
-    return currentX - rectSpacing;
-}
-
-static void renderTickerBar(SDL_Renderer* ren, TTF_Font* font, const std::vector<std::string>& tickers,
-                            int currentTickerIndex, int topY, int rightMargin) {
-    const int rectHeight = 30;
-    const int rectSpacing = 10;
-    const int rectPadding = 12;
-
-    int currentX = rightMargin;
-    g_tickerButtonCount = std::min(6, static_cast<int>(tickers.size()));
-
-    // Draw each ticker button from right to left
-    for (int i = g_tickerButtonCount - 1; i >= 0; i--) {
-        const std::string& ticker = tickers[i];
-
-        int textW, textH;
-        TTF_SizeText(font, ticker.c_str(), &textW, &textH);
-
-        int rectW = textW + 2 * rectPadding;
-        SDL_Rect rect = {currentX - rectW, topY, rectW, rectHeight};
-
-        // Store button rectangle for click detection
-        g_tickerButtons[i] = rect;
-
-        // Draw filled rectangle
-        if (i == currentTickerIndex) {
-            // Active ticker - filled with highlight color
-            SDL_SetRenderDrawColor(ren, COL_VIEWMODE_ACTIVE.r, COL_VIEWMODE_ACTIVE.g,
-                                   COL_VIEWMODE_ACTIVE.b, COL_VIEWMODE_ACTIVE.a);
-        } else {
-            // Inactive ticker - filled with background color
-            SDL_SetRenderDrawColor(ren, COL_VIEWMODE_BG.r, COL_VIEWMODE_BG.g,
-                                   COL_VIEWMODE_BG.b, COL_VIEWMODE_BG.a);
-        }
-        SDL_RenderFillRect(ren, &rect);
-
-        // Draw text centered in rectangle
-        RGBA textColor = (i == currentTickerIndex) ? COL_BG : COL_VIEWMODE_TEXT;
-        drawText(ren, font, ticker, currentX - rectW / 2, topY + rectHeight / 2,
-                 textColor, 1, 1);
-
-        currentX -= rectW + rectSpacing;
-    }
-}
 
 static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
                         const std::vector<PricePoint>& price_history,
@@ -236,7 +96,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     int off   = total - dispN;          // lookback data lives at 0..off-1
 
     // Reset mouse in chart area flag for this render cycle
-    g_mouseInChartArea = false;
+    setMouseInChartArea(false);
 
     if (price_history.empty()) {
         drawText(ren, font, "No data available",
@@ -359,10 +219,10 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
 
     // View mode rectangles and ticker buttons (drawn outside clipping region)
     const int barTopY = 5;
-    int rightEdge = renderViewModeBar(ren, fontSm, viewMode, barTopY, cL);
+    int rightEdge = renderViewModeBar(ren, fontSm, viewMode, barTopY, cL, COL_BG);
 
     // Ticker buttons (right-aligned to chart edge)
-    renderTickerBar(ren, fontSm, tickers, currentTickerIndex, barTopY, cR);
+    renderTickerBar(ren, fontSm, tickers, currentTickerIndex, barTopY, cR, COL_BG);
 
     // Trading days info (to the right of view mode buttons)
     std::string tickerInfo = std::to_string(dispN) + " Trading Days";
@@ -373,8 +233,8 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
              winDim.width / 2, winDim.height - 16, COL_GRID, 1, 1);
 
     // ── Mouse hover label ──
-    if (g_mouseX >= cL && g_mouseX <= cR && g_mouseY >= cT && g_mouseY <= cB) {
-        g_mouseInChartArea = true;
+    if (getMouseX() >= cL && getMouseX() <= cR && getMouseY() >= cT && getMouseY() <= cB) {
+        setMouseInChartArea(true);
         // Find the closest price point on the X axis to the mouse cursor
         int closest_di = -1;
         int min_dist = std::numeric_limits<int>::max();
@@ -382,7 +242,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
         // Iterate only through displayed points
         for (int di = 0; di < dispN; ++di) {
             int x_coord = toX(di);
-            int dist = std::abs(x_coord - g_mouseX);
+            int dist = std::abs(x_coord - getMouseX());
             if (dist < min_dist) {
                 min_dist = dist;
                 closest_di = di;
@@ -449,7 +309,7 @@ static void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
             }
         }
     } else {
-        g_mouseInChartArea = false;
+        setMouseInChartArea(false);
     }
 }
 
@@ -724,8 +584,7 @@ int main(int, char* []) {
                 SDL_RenderPresent(ren);
                 break; // End of SDL_MOUSEWHEEL case
             case SDL_MOUSEMOTION:
-                g_mouseX = ev.motion.x;
-                g_mouseY = ev.motion.y;
+                setMousePosition(ev.motion.x, ev.motion.y);
                 mouseMoved = true; // Set flag, don't render immediately
                 break;
             case SDL_MOUSEBUTTONDOWN:
