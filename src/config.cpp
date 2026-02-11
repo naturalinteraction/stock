@@ -18,18 +18,19 @@ static const std::vector<std::string> DEFAULT_TICKERS = {
 
 // Mapping enum to string
 static std::map<ViewMode, std::string> viewModeToString = {
-    {ViewMode::PriceChart, "PriceChart"},
-    {ViewMode::PriceChartStats, "PriceChartStats"},
+    {ViewMode::Trend, "Trend"},
     {ViewMode::Bollinger, "Bollinger"},
     {ViewMode::MACross, "MACross"},
 };
 
 // Mapping string to enum
 static std::map<std::string, ViewMode> stringToViewMode = {
-    {"PriceChart", ViewMode::PriceChart},
-    {"PriceChartStats", ViewMode::PriceChartStats},
+    {"Trend", ViewMode::Trend},
     {"Bollinger", ViewMode::Bollinger},
     {"MACross", ViewMode::MACross},
+    // Legacy support: map old modes to Trend
+    {"PriceChart", ViewMode::Trend},
+    {"PriceChartStats", ViewMode::Trend},
 };
 
 

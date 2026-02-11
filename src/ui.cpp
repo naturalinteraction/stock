@@ -2,7 +2,7 @@
 #include "draw.h"
 
 // Internal state
-static SDL_Rect g_viewModeTabs[4] = {};
+static SDL_Rect g_viewModeTabs[10] = {};
 static int g_viewModeTabCount = 0;
 
 static SDL_Rect g_tickerButtons[6] = {};
@@ -21,8 +21,7 @@ void setMousePosition(int x, int y) { g_mouseX = x; g_mouseY = y; }
 
 std::string getViewModeName(ViewMode mode) {
     switch (mode) {
-        case ViewMode::PriceChart:      return "Price";
-        case ViewMode::PriceChartStats: return "Stats";
+        case ViewMode::Trend:           return "Trend";
         case ViewMode::Bollinger:       return "Bollinger";
         case ViewMode::MACross:         return "MACross";
         default:                        return "Unknown";
