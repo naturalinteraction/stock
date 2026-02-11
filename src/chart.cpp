@@ -167,7 +167,7 @@ void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     renderTickerBar(ren, fontSm, tickers, currentTickerIndex, barTopY, cR, ChartColors::BG);
 
     // Trading days info (to the right of view mode buttons)
-    std::string tickerInfo = std::to_string(dispN) + " Trading Days";
+    std::string tickerInfo = std::to_string(dispN) + " Days";
     drawText(ren, fontSm, tickerInfo, rightEdge + 20, barTopY + 15, ChartColors::TEXT, 0, 1);
 
     // ── Instructions ──

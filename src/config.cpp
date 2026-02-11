@@ -11,9 +11,9 @@ static const std::vector<std::string> DEFAULT_TICKERS = {
     "VWCE.DE",
     "VHYL.AS", 
     "WS5X.MI",
-    "BTC-USD",
-    "USDEUR=X",
-    "EURUSD=X"
+    "1AMZN.MI",
+    "1GOOGL.MI",
+    "USDEUR=X"
 };
 
 // Mapping enum to string
