@@ -15,7 +15,7 @@ struct Config {
     int lastActiveTickerIndex;
 
     // Default constructor
-    Config() : viewMode(ViewMode::Trend), fullscreen(false), displayedDays(10), lastActiveTickerIndex(0) {}
+    Config() : viewMode(ViewMode::Linear), fullscreen(false), displayedDays(10), lastActiveTickerIndex(0) {}
 };
 
 Config loadConfig(const std::string& filename = CONFIG_FILE_PATH);

@@ -1,14 +1,14 @@
-#include "viewmode_trend.h"
+#include "viewmode_linear.h"
 
 #include <cmath>
 #include <iomanip>
 #include <sstream>
 #include <string>
 
-static constexpr RGBA COL_TREND = {255, 180, 50, 220};   // Orange main trend line
-static constexpr RGBA COL_BAND  = {255, 180, 50, 140};   // Orange confidence bands
+static constexpr RGBA COL_LINEAR = {255, 180, 50, 220};   // Orange main linear line
+static constexpr RGBA COL_BAND   = {255, 180, 50, 140};   // Orange confidence bands
 
-void renderTrendOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
+void renderLinearOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
                         const std::vector<PricePoint>& price_history,
                         const ChartRegion& cr) {
     int N   = cr.N;
@@ -140,8 +140,8 @@ void renderTrendOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
         }
     }
 
-    // Draw main trend line (thick)
-    SDL_SetRenderDrawColor(ren, COL_TREND.r, COL_TREND.g, COL_TREND.b, COL_TREND.a);
+    // Draw main linear line (thick)
+    SDL_SetRenderDrawColor(ren, COL_LINEAR.r, COL_LINEAR.g, COL_LINEAR.b, COL_LINEAR.a);
     for (int i = 1; i < N; ++i) {
         double fitted_prev = m * (i - 1) + offset;
         double fitted_curr = m * i + offset;
@@ -153,10 +153,10 @@ void renderTrendOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
     SDL_RenderSetClipRect(ren, nullptr);
 
     // Draw labels on right edge
-    struct TrendLabel { double val; RGBA col; std::string label; };
-    TrendLabel labels[] = {
+    struct LinearLabel { double val; RGBA col; std::string label; };
+    LinearLabel labels[] = {
         { m * (N - 1) + offset + sigma, COL_BAND, "+σ" },
-        { m * (N - 1) + offset,         COL_TREND, "trend" },
+        { m * (N - 1) + offset,         COL_LINEAR, "linear" },
         { m * (N - 1) + offset - sigma, COL_BAND, "-σ" },
     };
 
@@ -174,10 +174,10 @@ void renderTrendOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
     std::ostringstream slope_oss;
     slope_oss << std::fixed << std::setprecision(4) << m;
     std::string slope_str = "m=" + slope_oss.str();
-    drawText(ren, fontSm, slope_str, cr.cR + 4, cr.cB - 30, COL_TREND, 0, 0);
+    drawText(ren, fontSm, slope_str, cr.cR + 4, cr.cB - 30, COL_LINEAR, 0, 0);
 
     std::ostringstream r2_oss;
     r2_oss << std::fixed << std::setprecision(3) << r_squared;
     std::string r2_str = "R²=" + r2_oss.str();
-    drawText(ren, fontSm, r2_str, cr.cR + 4, cr.cB - 12, COL_TREND, 0, 0);
+    drawText(ren, fontSm, r2_str, cr.cR + 4, cr.cB - 12, COL_LINEAR, 0, 0);
 }

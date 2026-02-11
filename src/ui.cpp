@@ -21,7 +21,7 @@ void setMousePosition(int x, int y) { g_mouseX = x; g_mouseY = y; }
 
 std::string getViewModeName(ViewMode mode) {
     switch (mode) {
-        case ViewMode::Trend:           return "Trend";
+        case ViewMode::Linear:          return "Linear";
         case ViewMode::Parabolic:       return "Parabolic";
         case ViewMode::Bollinger:       return "Bollinger";
         case ViewMode::MACross:         return "MACross";

@@ -1,7 +1,7 @@
 #include "chart.h"
 #include "draw.h"
 #include "ui.h"
-#include "viewmode_trend.h"
+#include "viewmode_linear.h"
 #include "viewmode_parabolic.h"
 #include "viewmode_bollinger.h"
 #include "viewmode_macross.h"
@@ -132,8 +132,8 @@ void renderChart(SDL_Renderer* ren, TTF_Font* font, TTF_Font* fontSm,
     // ── View-mode overlays ──
     {
         ChartRegion cr{cL, cR, cT, cB, cW, cH, dispN, off, toY, toX};
-        if (viewMode == ViewMode::Trend)
-            renderTrendOverlay(ren, fontSm, price_history, cr);
+        if (viewMode == ViewMode::Linear)
+            renderLinearOverlay(ren, fontSm, price_history, cr);
         else if (viewMode == ViewMode::Parabolic)
             renderParabolicOverlay(ren, fontSm, price_history, cr);
         else if (viewMode == ViewMode::Bollinger)
