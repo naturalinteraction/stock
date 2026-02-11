@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+     "voicemode": {
+      "command": "voicemode",
+      "args": []
+    },
     "stock": {
       "command": "python3",
       "args": ["mcp_bridge.py"],
