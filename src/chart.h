@@ -61,7 +61,7 @@ struct PricePoint {
 };
 
 // ─── View modes ───
-enum class ViewMode { Trend, Bollinger, MACross, _COUNT };
+enum class ViewMode { Trend, Parabolic, Bollinger, MACross, _COUNT };
 constexpr int VIEW_MODE_COUNT = static_cast<int>(ViewMode::_COUNT);
 constexpr int LOOKBACK_DAYS   = 21;
 
