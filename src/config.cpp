@@ -9,7 +9,7 @@
 // Default ticker configuration
 static const std::vector<std::string> DEFAULT_TICKERS = {
     "VWCE.DE",
-    "VHYL.AS", 
+    "1MSFT.MI", 
     "WS5X.MI",
     "1AMZN.MI",
     "1GOOGL.MI",

@@ -195,9 +195,9 @@ void renderParabolicOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
     double x_last = (N - 1) - center_x;  // Use centered x
     struct ParabolicLabel { double val; RGBA col; std::string label; };
     ParabolicLabel labels[] = {
-        { a * x_last * x_last + b * x_last + c + sigma, COL_BAND, "+σ" },
+        { a * x_last * x_last + b * x_last + c + sigma, COL_BAND, "+s" },
         { a * x_last * x_last + b * x_last + c,         COL_PARABOLA, "para" },
-        { a * x_last * x_last + b * x_last + c - sigma, COL_BAND, "-σ" },
+        { a * x_last * x_last + b * x_last + c - sigma, COL_BAND, "-s" },
     };
 
     for (auto& pl : labels) {

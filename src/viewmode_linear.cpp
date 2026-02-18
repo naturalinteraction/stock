@@ -155,9 +155,9 @@ void renderLinearOverlay(SDL_Renderer* ren, TTF_Font* fontSm,
     // Draw labels on right edge
     struct LinearLabel { double val; RGBA col; std::string label; };
     LinearLabel labels[] = {
-        { m * (N - 1) + offset + sigma, COL_BAND, "+σ" },
+        { m * (N - 1) + offset + sigma, COL_BAND, "+s" },
         { m * (N - 1) + offset,         COL_LINEAR, "linear" },
-        { m * (N - 1) + offset - sigma, COL_BAND, "-σ" },
+        { m * (N - 1) + offset - sigma, COL_BAND, "-s" },
     };
 
     for (auto& tl : labels) {
